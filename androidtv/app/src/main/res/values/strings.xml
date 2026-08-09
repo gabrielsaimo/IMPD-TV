@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IMPD TV</string>
+    <string name="live">AO VIVO</string>
+    <string name="hint_pause">Aperte OK para pausar</string>
+    <string name="paused_title">Pausado</string>
+    <string name="paused_detail">Aperte OK para voltar a assistir</string>
+    <string name="starting_title">Ligando o canal…</string>
+    <string name="starting_detail">Só um instante</string>
+    <string name="offline_title">Sinal caiu</string>
+    <string name="offline_detail">Estamos reconectando sozinho. Não precisa fazer nada.</string>
+</resources>

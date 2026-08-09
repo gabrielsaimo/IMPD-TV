@@ -1,0 +1,12 @@
+# Apple TV
+appletv/build/
+*.xcuserdatad/
+xcuserdata/
+
+# Android
+androidtv/build/
+androidtv/app/build/
+androidtv/.gradle/
+androidtv/local.properties
+
+.DS_Store
