@@ -54,55 +54,6 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="48dp"
-        android:background="#A6000000"
-        android:paddingStart="32dp"
-        android:paddingTop="16dp"
-        android:paddingEnd="32dp"
-        android:paddingBottom="16dp"
-        android:text="@string/hint_pause"
-        android:textColor="#E6FFFFFF"
-        android:textSize="24sp" />
-
-    <!-- Paused -->
-    <LinearLayout
-        android:id="@+id/paused"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#BF000000"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="⏸"
-            android:textColor="@android:color/white"
-            android:textSize="120sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/paused_title"
-            android:textColor="@android:color/white"
-            android:textSize="56sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/paused_detail"
-            android:textColor="#E6FFFFFF"
-            android:textSize="30sp" />
-    </LinearLayout>
-
     <!-- Starting / reconnecting -->
     <LinearLayout
         android:id="@+id/status"

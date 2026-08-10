@@ -55,8 +55,6 @@ struct ContentView: View {
             switch model.phase {
             case .reconnecting, .starting:
                 statusCard
-            case .paused:
-                pausedCard
             case .playing:
                 if showsBanner { liveBanner }
             }
@@ -83,15 +81,6 @@ struct ContentView: View {
             .padding(.top, 50)
 
             Spacer()
-
-            Text("Aperte OK para pausar")
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
-                .padding(.horizontal, 44)
-                .padding(.vertical, 22)
-                .background(.black.opacity(0.55))
-                .clipShape(Capsule())
-                .padding(.bottom, 70)
         }
         .foregroundStyle(.white)
         .transition(.opacity)
@@ -103,22 +92,6 @@ struct ContentView: View {
             Text("AO VIVO")
                 .font(.system(size: 40, weight: .black, design: .rounded))
         }
-    }
-
-    private var pausedCard: some View {
-        VStack(spacing: 44) {
-            Image(systemName: "pause.circle.fill")
-                .font(.system(size: 190))
-                .foregroundStyle(.white)
-            Text("Pausado")
-                .font(.system(size: 72, weight: .heavy, design: .rounded))
-            Text("Aperte OK para voltar a assistir")
-                .font(.system(size: 40, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.black.opacity(0.75))
     }
 
     private var statusCard: some View {
@@ -145,8 +118,8 @@ struct ContentView: View {
     // MARK: - Interaction
 
     private func press() {
-        model.togglePlayPause()
-        if model.phase == .playing { model.jumpToLive() }
+        // Pause was removed on purpose: the channel plays live, always.
+        // Pressing OK only brings the channel banner back for a moment.
         reveal()
     }
 

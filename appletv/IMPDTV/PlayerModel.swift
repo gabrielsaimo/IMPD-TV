@@ -12,7 +12,6 @@ final class PlayerModel: ObservableObject {
     enum Phase: Equatable {
         case starting
         case playing
-        case paused
         case reconnecting
     }
 
@@ -39,28 +38,6 @@ final class PlayerModel: ObservableObject {
         attempt = 0
         load()
         startWatchdog()
-    }
-
-    func togglePlayPause() {
-        switch phase {
-        case .playing:
-            player.pause()
-            phase = .paused
-        case .paused:
-            player.play()
-            phase = .playing
-        case .starting, .reconnecting:
-            // A press during a hiccup means "try again now".
-            reconnect(immediately: true)
-        }
-    }
-
-    /// Live channels drift behind after a pause; resuming jumps to the edge so
-    /// the viewer is never watching minutes-old video without realising.
-    func jumpToLive() {
-        guard let item = player.currentItem,
-              let range = item.seekableTimeRanges.last?.timeRangeValue else { return }
-        player.seek(to: CMTimeRangeGetEnd(range), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     // MARK: - Loading
@@ -105,7 +82,7 @@ final class PlayerModel: ObservableObject {
     private func observePlayer() {
         timeControlObserver = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             Task { @MainActor in
-                guard let self, self.phase != .paused else { return }
+                guard let self else { return }
                 if player.timeControlStatus == .playing { self.phase = .playing }
             }
         }

@@ -19,10 +19,10 @@ import kotlin.math.pow
 /**
  * The whole app: one live channel, full screen, no menus.
  *
- * The audience is mostly elderly, so there is exactly one control to learn —
- * the OK button pauses and resumes. Nothing can be navigated into, nothing can
- * be misconfigured, and a dropped signal recovers on its own instead of asking
- * anyone to do something about it.
+ * The audience is mostly elderly, so there is nothing to learn and nothing to
+ * break: the channel just plays, always live. No pause, no menus, nothing can
+ * be navigated into or misconfigured, and a dropped signal recovers on its own
+ * instead of asking anyone to do something about it.
  */
 @UnstableApi
 class MainActivity : AppCompatActivity() {
@@ -30,7 +30,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var banner: View
-    private lateinit var pausedCard: View
     private lateinit var statusCard: View
     private lateinit var statusTitle: android.widget.TextView
     private lateinit var statusDetail: android.widget.TextView
@@ -46,7 +45,6 @@ class MainActivity : AppCompatActivity() {
 
         playerView = findViewById(R.id.player)
         banner = findViewById(R.id.banner)
-        pausedCard = findViewById(R.id.paused)
         statusCard = findViewById(R.id.status)
         statusTitle = findViewById(R.id.statusTitle)
         statusDetail = findViewById(R.id.statusDetail)
@@ -70,7 +68,7 @@ class MainActivity : AppCompatActivity() {
                 Player.STATE_READY -> {
                     retryCount = 0
                     hideStatus()
-                    if (player.playWhenReady) revealBanner() else showPaused()
+                    revealBanner()
                 }
                 Player.STATE_BUFFERING -> Unit
                 else -> Unit
@@ -101,12 +99,12 @@ class MainActivity : AppCompatActivity() {
             KeyEvent.KEYCODE_DPAD_CENTER,
             KeyEvent.KEYCODE_ENTER,
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+            KeyEvent.KEYCODE_MEDIA_PLAY,
+            KeyEvent.KEYCODE_MEDIA_PAUSE,
             KeyEvent.KEYCODE_SPACE -> {
-                togglePlayback()
+                revealBanner()
                 true
             }
-            KeyEvent.KEYCODE_MEDIA_PLAY -> { resume(); true }
-            KeyEvent.KEYCODE_MEDIA_PAUSE -> { pause(); true }
             else -> {
                 revealBanner()
                 super.onKeyDown(keyCode, event)
@@ -114,36 +112,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun togglePlayback() {
-        if (player.playWhenReady) pause() else resume()
-    }
-
-    private fun pause() {
-        player.playWhenReady = false
-        showPaused()
-    }
-
-    private fun resume() {
-        pausedCard.visibility = View.GONE
-        // Jump back to the live edge: after a pause the stream is behind.
-        player.seekToDefaultPosition()
-        player.playWhenReady = true
-        revealBanner()
-    }
-
     // MARK: - Overlays
 
     private fun revealBanner() {
-        pausedCard.visibility = View.GONE
         banner.visibility = View.VISIBLE
         handler.removeCallbacks(hideBanner)
         handler.postDelayed(hideBanner, 6_000)
-    }
-
-    private fun showPaused() {
-        handler.removeCallbacks(hideBanner)
-        banner.visibility = View.GONE
-        pausedCard.visibility = View.VISIBLE
     }
 
     private fun showStatus(title: String, detail: String) {
@@ -151,7 +125,6 @@ class MainActivity : AppCompatActivity() {
         statusDetail.text = detail
         statusCard.visibility = View.VISIBLE
         banner.visibility = View.GONE
-        pausedCard.visibility = View.GONE
     }
 
     private fun hideStatus() {

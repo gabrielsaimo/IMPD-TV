@@ -10,16 +10,15 @@ menu, sem lista, sem configuração. Duas versões nativas:
 
 ## O desenho
 
-O público é majoritariamente idoso, então há **um único controle para aprender**:
-o botão **OK** pausa e volta a assistir. Não existe nada em que se possa entrar,
-nada que se possa desconfigurar e nenhuma mensagem de erro para fechar.
+O público é majoritariamente idoso, então **não há nada para aprender nem para
+apertar**: o canal toca direto, sempre ao vivo, sem pausa. Não existe nada em
+que se possa entrar, nada que se possa desconfigurar e nenhuma mensagem de
+erro para fechar.
 
 - Abre tocando. Nenhuma tela intermediária.
 - Faixa grande com **AO VIVO** e o nome do canal aparece a qualquer toque no
   controle e some sozinha em 6 segundos.
-- Pausado mostra um cartaz enorme: "Pausado — Aperte OK para voltar a assistir".
-- Ao voltar do pause, salta para o ponto ao vivo: ninguém fica assistindo
-  minutos atrasado sem perceber.
+- O botão OK não pausa: só faz a faixa do canal aparecer por um momento.
 - Queda de sinal nunca vira erro. Mostra "Sinal caiu — estamos reconectando
   sozinho. Não precisa fazer nada." e tenta de novo com espera crescente até 15s.
 - Vigia travamentos: o player pode ficar "esperando dados" para sempre numa
