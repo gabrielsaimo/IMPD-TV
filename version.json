@@ -1,5 +1,5 @@
 {
-  "versionCode": 6,
-  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1,4/impd-tv-1.4.apk",
-  "releaseNotes": "Vídeos do YouTube voltam a abrir sem exigir confirmação do app."
+  "versionCode": 7,
+  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1.6/impd-tv-1.6.apk",
+  "releaseNotes": "Vídeos do YouTube: tenta abrir direto no app antes de cair no link do navegador."
 }
