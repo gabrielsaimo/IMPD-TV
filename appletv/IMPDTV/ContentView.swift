@@ -30,6 +30,8 @@ struct ContentView: View {
     @StateObject private var model = PlayerModel()
     @State private var showsBanner = true
     @State private var hideWork: DispatchWorkItem?
+    @State private var showsInfo = false
+    @State private var info = ChurchInfo.fallback
 
     var body: some View {
         // A focusable, full-screen button: on tvOS the Select press only
@@ -40,10 +42,11 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .ignoresSafeArea()
             .onPlayPauseCommand { press() }
-            .onMoveCommand { _ in reveal() }
+            .onMoveCommand(perform: move)
             .onAppear {
                 model.start()
                 reveal()
+                Task { info = await ChurchInfoFetcher.fetch() }
             }
     }
 
@@ -57,6 +60,10 @@ struct ContentView: View {
                 statusCard
             case .playing:
                 if showsBanner { liveBanner }
+            }
+
+            if showsInfo {
+                ChurchInfoPanel(info: info).transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -100,11 +107,11 @@ struct ContentView: View {
                 .controlSize(.extraLarge)
                 .tint(.white)
                 .scaleEffect(2.4)
-            Text(model.phase == .starting ? "Ligando o canal…" : "Sinal caiu")
+            Text(model.phase == .starting ? "Sintonizando…" : "Buscando sinal…")
                 .font(.system(size: 68, weight: .heavy, design: .rounded))
             Text(model.phase == .starting
                  ? "Só um instante"
-                 : "Estamos reconectando sozinho. Não precisa fazer nada.")
+                 : "Só um instante, estamos sintonizando automaticamente.")
                 .font(.system(size: 38, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.85))
                 .multilineTextAlignment(.center)
@@ -119,8 +126,30 @@ struct ContentView: View {
 
     private func press() {
         // Pause was removed on purpose: the channel plays live, always.
-        // Pressing OK only brings the channel banner back for a moment.
-        reveal()
+        // Pressing OK only brings the channel banner back for a moment, or
+        // closes the info panel if that is what is on screen.
+        if showsInfo {
+            withAnimation(.easeInOut(duration: 0.2)) { showsInfo = false }
+        } else {
+            reveal()
+        }
+    }
+
+    /// Up opens the church info panel; up again (or any other direction) closes it.
+    private func move(_ direction: MoveCommandDirection) {
+        if showsInfo {
+            withAnimation(.easeInOut(duration: 0.2)) { showsInfo = false }
+            return
+        }
+        if direction == .up {
+            hideWork?.cancel()
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showsBanner = false
+                showsInfo = true
+            }
+        } else {
+            reveal()
+        }
     }
 
     /// The banner shows on any remote activity and gets out of the way again.

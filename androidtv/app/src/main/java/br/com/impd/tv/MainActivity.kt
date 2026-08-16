@@ -1,16 +1,32 @@
 package br.com.impd.tv
 
+import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.ImageView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import coil.load
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import kotlin.math.min
@@ -33,10 +49,71 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusCard: View
     private lateinit var statusTitle: android.widget.TextView
     private lateinit var statusDetail: android.widget.TextView
+    
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var qrCode1: ImageView
+    private lateinit var pixText1: android.widget.TextView
+    private lateinit var qrCode2: ImageView
+    private lateinit var pixText2: android.widget.TextView
+
+    private lateinit var bottomDrawer: View
+    private lateinit var youtubeRecyclerView: RecyclerView
+    private var isYoutubeLoaded = false
+    
+    // Prayer request drawer
+    private lateinit var qrCodePrayer: ImageView
+    private lateinit var prayerSubtitle: android.widget.TextView
+    private lateinit var prayerScanHint: android.widget.TextView
+    private lateinit var prayerNumber: android.widget.TextView
+    private lateinit var prayerNumber2: android.widget.TextView
+
+    // Church info panel
+    private lateinit var infoPanel: View
+    private lateinit var infoHero: ImageView
+    private lateinit var infoAddress: android.widget.TextView
+    private lateinit var infoEmail: android.widget.TextView
+    private lateinit var infoCongregations: android.widget.TextView
+    private lateinit var infoQrSite: ImageView
 
     private val handler = Handler(Looper.getMainLooper())
     private val hideBanner = Runnable { banner.visibility = View.GONE }
     private var retryCount = 0
+
+    /** Last stream URL that actually loaded; used as a fallback if a re-resolve fails mid-retry. */
+    private var lastKnownStreamUrl: String? = null
+
+    /** Guards against a resolver callback landing after onPause released the player. */
+    private var isResumed = false
+
+    private val connectivityManager: ConnectivityManager by lazy {
+        getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
+
+    /**
+     * Sending someone to the system Wi-Fi screen is the one thing in this app
+     * that takes the television away from them, so it happens at most once per
+     * launch: on a box that has never been connected, or one that was moved to
+     * a place where its network is gone. Everything after that recovers on its
+     * own — [networkCallback] resumes playback the moment a network appears,
+     * with nobody having to press anything.
+     */
+    private var hasOfferedWifiSettings = false
+    private var networkCallbackRegistered = false
+
+    private val retryStream = Runnable { loadStream() }
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            handler.post {
+                if (!isResumed) return@post
+                // A network came back: stop counting failures and try immediately
+                // rather than waiting out the current backoff.
+                retryCount = 0
+                handler.removeCallbacks(retryStream)
+                loadStream()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,18 +125,146 @@ class MainActivity : AppCompatActivity() {
         statusCard = findViewById(R.id.status)
         statusTitle = findViewById(R.id.statusTitle)
         statusDetail = findViewById(R.id.statusDetail)
+        
+        drawerLayout = findViewById(R.id.drawer_layout)
+        qrCode1 = findViewById(R.id.qr_code_1)
+        pixText1 = findViewById(R.id.pix_text_1)
+        qrCode2 = findViewById(R.id.qr_code_2)
+        pixText2 = findViewById(R.id.pix_text_2)
 
-        player = ExoPlayer.Builder(this).build().apply {
-            // A live channel should always show the newest picture available.
-            setMediaItem(MediaItem.fromUri(Channel.STREAM))
-            playWhenReady = true
-            addListener(playerListener)
-            prepare()
-        }
-        playerView.player = player
-        playerView.useController = false
+        bottomDrawer = findViewById(R.id.bottom_drawer)
+        youtubeRecyclerView = findViewById(R.id.youtube_recycler_view)
+        youtubeRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        youtubeRecyclerView.setHasFixedSize(true)
+        bottomDrawer.visibility = View.GONE
+        
+        qrCodePrayer = findViewById(R.id.qr_code_whatsapp)
+        prayerSubtitle = findViewById(R.id.prayer_subtitle)
+        prayerScanHint = findViewById(R.id.prayer_scan_hint)
+        prayerNumber = findViewById(R.id.whatsapp_number_text)
+        prayerNumber2 = findViewById(R.id.prayer_number_2)
+
+        infoPanel = findViewById(R.id.info_panel)
+        infoHero = findViewById(R.id.info_hero)
+        infoAddress = findViewById(R.id.info_address)
+        infoEmail = findViewById(R.id.info_email)
+        infoCongregations = findViewById(R.id.info_congregations)
+        infoQrSite = findViewById(R.id.info_qr_site)
+        infoPanel.visibility = View.GONE
 
         showStatus(getString(R.string.starting_title), getString(R.string.starting_detail))
+
+        setupPixDrawer()
+        setupChurchInfo()
+        
+        // Verifica se há atualizações remotamente
+        UpdateManager.checkForUpdates(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isResumed = true
+        registerNetworkCallback()
+        initializePlayer()
+    }
+
+    private fun registerNetworkCallback() {
+        if (networkCallbackRegistered) return
+        try {
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            connectivityManager.registerNetworkCallback(request, networkCallback)
+            networkCallbackRegistered = true
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        if (!networkCallbackRegistered) return
+        try {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        networkCallbackRegistered = false
+    }
+
+    private fun setupPixDrawer() {
+        val usesWhatsapp = Contact.WHATSAPP != null
+
+        // The panels read correctly before any QR code finishes rendering.
+        prayerSubtitle.setText(
+            if (usesWhatsapp) R.string.prayer_subtitle_whatsapp else R.string.prayer_subtitle
+        )
+        prayerScanHint.setText(
+            if (usesWhatsapp) R.string.prayer_scan_hint_whatsapp else R.string.prayer_scan_hint
+        )
+        prayerNumber.text = Contact.formatBr(Contact.WHATSAPP ?: Contact.PRAYER_PHONE)
+        prayerNumber2.text = if (usesWhatsapp) "" else Contact.formatBr(Contact.PRAYER_PHONE_2)
+        prayerNumber2.visibility = if (usesWhatsapp) View.GONE else View.VISIBLE
+
+        // Gera QR Codes assincronamente
+        Thread {
+            val key1 = "pix@impd.org.br"
+            val payload1 = QrCodeUtils.generatePixPayload(key1)
+            val bitmap1 = QrCodeUtils.generateQrCodeWithIcon(this, payload1, 300, 300, R.mipmap.ic_launcher)
+
+            val key2 = "pix2@impd.org.br"
+            val payload2 = QrCodeUtils.generatePixPayload(key2)
+            val bitmap2 = QrCodeUtils.generateQrCodeWithIcon(this, payload2, 300, 300, R.mipmap.ic_launcher)
+
+            val prayerIcon = if (usesWhatsapp) R.drawable.ic_whatsapp else R.mipmap.ic_launcher
+            val bitmapPrayer = QrCodeUtils.generateQrCodeWithIcon(
+                this, Contact.prayerQrPayload(), 300, 300, prayerIcon
+            )
+
+            handler.post {
+                if (bitmap1 != null) qrCode1.setImageBitmap(bitmap1)
+                pixText1.text = key1
+
+                if (bitmap2 != null) qrCode2.setImageBitmap(bitmap2)
+                pixText2.text = key2
+
+                if (bitmapPrayer != null) qrCodePrayer.setImageBitmap(bitmapPrayer)
+            }
+        }.start()
+    }
+
+    /**
+     * The panel is filled in once, at startup, so pressing up never waits on
+     * the network: it always has the fallback text on screen already and only
+     * swaps in fresher values if the lookup comes back.
+     */
+    private fun setupChurchInfo() {
+        applyChurchInfo(ChurchInfo.fallback)
+        // Held back so three extra HTTP calls do not compete with the stream for
+        // a weak box's network and CPU during the first seconds after launch.
+        // Nothing waits on it: the panel already reads correctly without it.
+        handler.postDelayed({ ChurchInfoFetcher.fetch { applyChurchInfo(it) } }, 12_000)
+
+        Thread {
+            val bitmap = QrCodeUtils.generateQrCodeWithIcon(
+                this, "https://impd.org.br", 280, 280, R.mipmap.ic_launcher
+            )
+            handler.post { if (bitmap != null) infoQrSite.setImageBitmap(bitmap) }
+        }.start()
+    }
+
+    private fun applyChurchInfo(info: ChurchInfo) {
+        infoAddress.text = info.headOfficeAddress
+        infoEmail.text = info.email
+        infoCongregations.text =
+            getString(R.string.info_congregations_format, info.congregationCount)
+        info.heroImageUrl?.let { url ->
+            infoHero.load(url) {
+                size(640, 640)
+                crossfade(true)
+                placeholder(R.drawable.banner)
+                error(R.drawable.banner)
+            }
+        }
     }
 
     private val playerListener = object : Player.Listener {
@@ -67,6 +272,10 @@ class MainActivity : AppCompatActivity() {
             when (state) {
                 Player.STATE_READY -> {
                     retryCount = 0
+                    // Playing again means the offer was consumed: if this box is
+                    // later carried somewhere its network does not reach, it gets
+                    // one fresh chance to send someone to the Wi-Fi screen.
+                    hasOfferedWifiSettings = false
                     hideStatus()
                     revealBanner()
                 }
@@ -80,22 +289,159 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Backs off a little further on each failure, capped so it never gives up. */
+    /**
+     * Backs off a little further on each failure, capped so it never gives up.
+     * Re-resolves the stream URL on every attempt rather than retrying the
+     * same one, since the outage itself may be the streaming host having
+     * moved the file.
+     */
     private fun reconnect() {
-        showStatus(getString(R.string.offline_title), getString(R.string.offline_detail))
+        if (hasNetworkConnection()) {
+            showStatus(getString(R.string.offline_title), getString(R.string.offline_detail))
+        } else {
+            showStatus(getString(R.string.no_network_title), getString(R.string.no_network_detail))
+            offerWifiSettingsOnce()
+        }
         retryCount++
         val delay = min(1.6.pow(retryCount.toDouble()) * 1000, 15_000.0).toLong()
-        handler.postDelayed({
-            player.seekToDefaultPosition()
-            player.prepare()
-            player.playWhenReady = true
-        }, delay)
+        handler.removeCallbacks(retryStream)
+        handler.postDelayed(retryStream, delay)
+    }
+
+    private fun hasNetworkConnection(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = connectivityManager.activeNetwork ?: return false
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }
+        @Suppress("DEPRECATION")
+        return connectivityManager.activeNetworkInfo?.isConnected == true
+    }
+
+    /**
+     * Opens the system Wi-Fi screen, but only the first time this launch: a box
+     * fresh out of the box, or one that was carried to a new room, needs a
+     * human to pick a network once. Repeating it would yank the television away
+     * from the viewer over and over on a flaky connection.
+     */
+    private fun offerWifiSettingsOnce() {
+        if (hasOfferedWifiSettings) return
+        hasOfferedWifiSettings = true
+        try {
+            startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+        } catch (e: Exception) {
+            try {
+                startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+            } catch (e2: Exception) {
+                e2.printStackTrace()
+            }
+        }
     }
 
     // MARK: - Remote
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        val isBottomDrawerOpen = bottomDrawer.visibility == View.VISIBLE
+        val isEndDrawerOpen = drawerLayout.isDrawerOpen(GravityCompat.END)
+        val isStartDrawerOpen = drawerLayout.isDrawerOpen(GravityCompat.START)
+        val isInfoPanelOpen = infoPanel.visibility == View.VISIBLE
+        val isAnyDrawerOpen = isBottomDrawerOpen || isEndDrawerOpen || isStartDrawerOpen
+
+        // The info panel covers the screen: while it is up, the navigation keys
+        // only close it, so no other panel can open behind it. Volume and power
+        // still belong to the television and are passed straight through.
+        if (isInfoPanelOpen) {
+            return when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP,
+                KeyEvent.KEYCODE_DPAD_DOWN,
+                KeyEvent.KEYCODE_DPAD_LEFT,
+                KeyEvent.KEYCODE_DPAD_RIGHT,
+                KeyEvent.KEYCODE_BACK,
+                KeyEvent.KEYCODE_DPAD_CENTER,
+                KeyEvent.KEYCODE_ENTER -> {
+                    hideInfoPanel()
+                    true
+                }
+                else -> super.onKeyDown(keyCode, event)
+            }
+        }
+
         return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                if (isBottomDrawerOpen) {
+                    super.onKeyDown(keyCode, event)
+                } else if (!isAnyDrawerOpen) {
+                    bottomDrawer.visibility = View.VISIBLE
+                    youtubeRecyclerView.requestFocus()
+                    
+                    if (!isYoutubeLoaded) {
+                        YoutubeFetcher.fetchLatestVideos(
+                            onSuccess = { videos ->
+                                youtubeRecyclerView.adapter = VideoAdapter(videos)
+                                isYoutubeLoaded = true
+                            },
+                            onError = {
+                                Toast.makeText(this@MainActivity, "Erro ao carregar vídeos", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                    true
+                } else {
+                    super.onKeyDown(keyCode, event)
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                if (isBottomDrawerOpen) {
+                    bottomDrawer.visibility = View.GONE
+                    playerView.requestFocus()
+                    true
+                } else if (!isAnyDrawerOpen) {
+                    showInfoPanel()
+                    true
+                } else {
+                    super.onKeyDown(keyCode, event)
+                }
+            }
+            KeyEvent.KEYCODE_BACK -> {
+                if (isEndDrawerOpen) {
+                    drawerLayout.closeDrawer(GravityCompat.END)
+                    true
+                } else if (isStartDrawerOpen) {
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                } else if (isBottomDrawerOpen) {
+                    bottomDrawer.visibility = View.GONE
+                    playerView.requestFocus()
+                    true
+                } else {
+                    super.onKeyDown(keyCode, event)
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                if (isBottomDrawerOpen || isStartDrawerOpen) {
+                    // Let the list navigate items horizontally
+                    super.onKeyDown(keyCode, event)
+                } else if (!isEndDrawerOpen && !isAnyDrawerOpen) {
+                    drawerLayout.openDrawer(GravityCompat.END)
+                    true
+                } else {
+                    super.onKeyDown(keyCode, event)
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (isBottomDrawerOpen) {
+                    // Let the list navigate items horizontally
+                    super.onKeyDown(keyCode, event)
+                } else if (isEndDrawerOpen) {
+                    drawerLayout.closeDrawer(GravityCompat.END)
+                    true
+                } else if (!isStartDrawerOpen && !isAnyDrawerOpen) {
+                    drawerLayout.openDrawer(GravityCompat.START)
+                    true
+                } else {
+                    super.onKeyDown(keyCode, event)
+                }
+            }
             KeyEvent.KEYCODE_DPAD_CENTER,
             KeyEvent.KEYCODE_ENTER,
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
@@ -120,6 +466,18 @@ class MainActivity : AppCompatActivity() {
         handler.postDelayed(hideBanner, 6_000)
     }
 
+    private fun showInfoPanel() {
+        banner.visibility = View.GONE
+        handler.removeCallbacks(hideBanner)
+        infoPanel.visibility = View.VISIBLE
+        infoPanel.requestFocus()
+    }
+
+    private fun hideInfoPanel() {
+        infoPanel.visibility = View.GONE
+        playerView.requestFocus()
+    }
+
     private fun showStatus(title: String, detail: String) {
         statusTitle.text = title
         statusDetail.text = detail
@@ -131,22 +489,81 @@ class MainActivity : AppCompatActivity() {
         statusCard.visibility = View.GONE
     }
 
-    override fun onStop() {
-        super.onStop()
-        player.playWhenReady = false
-    }
-
-    override fun onStart() {
-        super.onStart()
-        if (::player.isInitialized) {
-            player.seekToDefaultPosition()
+    private fun initializePlayer() {
+        // onPause releases the player, which leaves it in STATE_IDLE and unusable
+        // for a fresh prepare(); a released instance is always rebuilt, never reused.
+        if (!::player.isInitialized || player.playbackState == Player.STATE_IDLE) {
+            // Weak set-top boxes are memory constrained: this is a live-only
+            // channel, so nothing is ever seeked backward, and the back
+            // buffer is dropped entirely instead of holding onto old segments.
+            val loadControl = DefaultLoadControl.Builder()
+                .setBufferDurationsMs(15_000, 30_000, 1_500, 3_000)
+                .setBackBuffer(0, false)
+                .build()
+            player = ExoPlayer.Builder(this)
+                .setLoadControl(loadControl)
+                .build().apply { addListener(playerListener) }
+            playerView.player = player
+            playerView.useController = false
+            loadStream()
+        } else {
             player.playWhenReady = true
         }
     }
 
+    /** Always fetches the current stream URL from impd.org.br before playing: it can change. */
+    private fun loadStream() {
+        if (!hasNetworkConnection()) {
+            // No point resolving or preparing anything. The network callback
+            // restarts this the moment a connection appears.
+            showStatus(getString(R.string.no_network_title), getString(R.string.no_network_detail))
+            offerWifiSettingsOnce()
+            handler.removeCallbacks(retryStream)
+            handler.postDelayed(retryStream, 5_000)
+            return
+        }
+
+        StreamResolver.resolveStreamUrl(
+            onResult = { url ->
+                lastKnownStreamUrl = url
+                playUrl(url)
+            },
+            onError = {
+                val fallback = lastKnownStreamUrl ?: Channel.FALLBACK_STREAM
+                playUrl(fallback)
+            }
+        )
+    }
+
+    private fun playUrl(url: String) {
+        // The resolver call is async and can outlive onPause; a released player must not be touched.
+        if (!isResumed || !::player.isInitialized) return
+        player.setMediaItem(MediaItem.fromUri(url))
+        player.playWhenReady = true
+        player.prepare()
+    }
+
+    private fun releasePlayer() {
+        // Only playback callbacks are dropped here. Clearing the whole queue
+        // would also throw away the QR code and church info hand-offs that
+        // background threads post back to the UI.
+        handler.removeCallbacks(retryStream)
+        handler.removeCallbacks(hideBanner)
+        if (::player.isInitialized) {
+            playerView.player = null
+            player.release()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isResumed = false
+        unregisterNetworkCallback()
+        releasePlayer()
+    }
+
     override fun onDestroy() {
-        handler.removeCallbacksAndMessages(null)
-        player.release()
+        releasePlayer()
         super.onDestroy()
     }
 }

@@ -9,4 +9,17 @@ androidtv/app/build/
 androidtv/.gradle/
 androidtv/local.properties
 
+# Signing. The release key signs every future update: losing it means no
+# existing install can ever be upgraded again, and leaking it lets anyone
+# publish an APK the televisions will accept as ours.
+androidtv/keystore.properties
+*.jks
+*.keystore
+
+# Build artifacts staged for a GitHub release
+*.apk
+
 .DS_Store
+
+# Scraped page dump used while reverse-engineering the stream URL
+androidtv/impd_raw.html

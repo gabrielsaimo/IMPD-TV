@@ -11,6 +11,9 @@
 		AA0000000000000000000201 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000101 /* ContentView.swift */; };
 		AA0000000000000000000202 /* PlayerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000102 /* PlayerModel.swift */; };
 		AA0000000000000000000203 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000103 /* Channel.swift */; };
+		AA0000000000000000000204 /* StreamResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000104 /* StreamResolver.swift */; };
+		AA0000000000000000000205 /* ChurchInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000105 /* ChurchInfo.swift */; };
+		AA0000000000000000000206 /* ChurchInfoPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000106 /* ChurchInfoPanel.swift */; };
 		AA0000000000000000000351 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000350 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -19,6 +22,9 @@
 		AA0000000000000000000101 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AA0000000000000000000102 /* PlayerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerModel.swift; sourceTree = "<group>"; };
 		AA0000000000000000000103 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
+		AA0000000000000000000104 /* StreamResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamResolver.swift; sourceTree = "<group>"; };
+		AA0000000000000000000105 /* ChurchInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChurchInfo.swift; sourceTree = "<group>"; };
+		AA0000000000000000000106 /* ChurchInfoPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChurchInfoPanel.swift; sourceTree = "<group>"; };
 		AA0000000000000000000300 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA0000000000000000000301 /* IMPD TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "IMPD TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000350 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -50,6 +56,9 @@
 				AA0000000000000000000101 /* ContentView.swift */,
 				AA0000000000000000000102 /* PlayerModel.swift */,
 				AA0000000000000000000103 /* Channel.swift */,
+				AA0000000000000000000104 /* StreamResolver.swift */,
+				AA0000000000000000000105 /* ChurchInfo.swift */,
+				AA0000000000000000000106 /* ChurchInfoPanel.swift */,
 				AA0000000000000000000350 /* Assets.xcassets */,
 				AA0000000000000000000300 /* Info.plist */,
 			);
@@ -137,6 +146,9 @@
 				AA0000000000000000000201 /* ContentView.swift in Sources */,
 				AA0000000000000000000202 /* PlayerModel.swift in Sources */,
 				AA0000000000000000000203 /* Channel.swift in Sources */,
+				AA0000000000000000000204 /* StreamResolver.swift in Sources */,
+				AA0000000000000000000206 /* ChurchInfoPanel.swift in Sources */,
+				AA0000000000000000000205 /* ChurchInfo.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

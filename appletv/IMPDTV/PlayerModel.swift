@@ -26,6 +26,12 @@ final class PlayerModel: ObservableObject {
     private var stalledSince: Date?
     private var attempt = 0
 
+    /// Last stream URL that actually loaded; used as a fallback if a re-resolve fails mid-retry.
+    private var lastKnownStreamURL: URL?
+
+    /// Bumped on every `load()`; a resolution that finishes after a newer one started is discarded.
+    private var loadGeneration = 0
+
     init() {
         player.automaticallyWaitsToMinimizeStalling = true
         player.allowsExternalPlayback = true
@@ -42,10 +48,27 @@ final class PlayerModel: ObservableObject {
 
     // MARK: - Loading
 
+    /// Always fetches the current stream URL from impd.org.br before playing: it can change.
     private func load() {
+        loadGeneration += 1
+        let generation = loadGeneration
+
+        Task { [weak self] in
+            let resolved = try? await StreamResolver.resolveStreamURL()
+            await MainActor.run {
+                guard let self else { return }
+                let url = resolved ?? self.lastKnownStreamURL ?? Channel.fallbackStream
+                self.attach(to: url, generation: generation)
+            }
+        }
+    }
+
+    private func attach(to url: URL, generation: Int) {
+        guard generation == loadGeneration else { return }
+        lastKnownStreamURL = url
         tearDownItemObservers()
 
-        let asset = AVURLAsset(url: Channel.stream)
+        let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
         item.preferredForwardBufferDuration = 6
 

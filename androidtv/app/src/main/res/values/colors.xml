@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the blue used on impd.org.br, with the existing live-red accent. -->
+    <color name="brand_blue">#4A7FD4</color>
+    <color name="brand_red">#E53935</color>
+
+    <color name="surface_dark">#E6101010</color>
+    <color name="surface_dark_translucent">#CC101010</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+</resources>

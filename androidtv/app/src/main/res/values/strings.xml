@@ -2,8 +2,29 @@
 <resources>
     <string name="app_name">IMPD TV</string>
     <string name="live">AO VIVO</string>
-    <string name="starting_title">Ligando o canal…</string>
+    <string name="starting_title">Sintonizando…</string>
     <string name="starting_detail">Só um instante</string>
-    <string name="offline_title">Sinal caiu</string>
-    <string name="offline_detail">Estamos reconectando sozinho. Não precisa fazer nada.</string>
+    <string name="offline_title">Buscando sinal…</string>
+    <string name="offline_detail">Só um instante, estamos sintonizando automaticamente.</string>
+    <string name="no_network_title">Conectando à internet…</string>
+    <string name="no_network_detail">Escolha a sua rede Wi-Fi na tela que abriu. A transmissão começa sozinha assim que conectar.</string>
+
+    <!-- Church info panel -->
+    <string name="church_name">Igreja Mundial do Poder de Deus</string>
+    <string name="church_tagline">Fé, milagres e transformação de vidas</string>
+    <string name="church_site">impd.org.br</string>
+    <string name="church_about">Fundada em 3 de março de 1998, em Sorocaba, São Paulo, pelo Apóstolo Valdemiro Santiago e pela Bispa Franciléia Santiago.\n\nDesde então cresceu para centenas de congregações em todo o Brasil, levando a palavra de Deus, oração e acolhimento a milhões de famílias.</string>
+    <string name="info_about_label">SOBRE</string>
+    <string name="info_head_office_label">SEDE</string>
+    <string name="info_contact_label">CONTATO</string>
+    <string name="info_site_label">SITE OFICIAL</string>
+    <string name="info_dismiss_hint">▲ para voltar</string>
+    <string name="info_navigation_hint">◀ Pedidos de oração   ·   ▶ Doação por PIX   ·   ▼ Últimos vídeos</string>
+    <string name="info_congregations_format">Mais de %1$d igrejas no Brasil</string>
+
+    <!-- Prayer requests -->
+    <string name="prayer_subtitle">Central de Oração · Sede Mundial, Brás</string>
+    <string name="prayer_subtitle_whatsapp">Fale conosco pelo WhatsApp</string>
+    <string name="prayer_scan_hint">Aponte a câmera do celular para ligar</string>
+    <string name="prayer_scan_hint_whatsapp">Aponte a câmera do celular para conversar</string>
 </resources>
