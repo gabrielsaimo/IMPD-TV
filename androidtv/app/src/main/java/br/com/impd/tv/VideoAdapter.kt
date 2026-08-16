@@ -50,64 +50,48 @@ class VideoAdapter(private val videos: List<YoutubeVideo>) : RecyclerView.Adapte
     }
 
     /**
-     * Hands the video to a player that can actually run on a television.
+     * Hands the video to whichever player the box actually has.
      *
-     * The trap here is the phone build of YouTube: it happily claims the link,
-     * then finds no touchscreen, shows a black screen and quits. The box drops
-     * back to the home screen, which is this app, so from the sofa it looks
-     * like pressing OK did nothing.
-     *
-     * So a candidate is only used if the system reports a leanback launcher for
-     * it — that is the same signal Android TV itself uses to decide whether an
-     * app belongs on the television at all. Only when nothing on the box passes
-     * does it fall back to whatever will take the link.
+     * Cheap Android TV sticks — this app's audience — often run a vendor
+     * launcher instead of the real Android TV/Google TV shell, and none of
+     * their apps declare a leanback launcher at all, working YouTube included.
+     * Requiring one, as an earlier version of this method did, rejected every
+     * app on exactly those boxes and broke playback entirely. So the only
+     * requirement here is that the package can resolve the intent — checked
+     * with the package manager rather than launched blind, because since
+     * Android 11 a target-SDK-30+ app cannot even see another app is
+     * installed unless it is declared in AndroidManifest's `<queries>`.
      */
     private fun openVideo(context: android.content.Context, video: YoutubeVideo) {
         val watchUri = Uri.parse("https://www.youtube.com/watch?v=${video.id}")
         val packageManager = context.packageManager
-
-        fun isTelevisionApp(pkg: String) =
-            packageManager.getLeanbackLaunchIntentForPackage(pkg) != null
 
         fun viewIntent(uri: Uri, pkg: String?) = Intent(Intent.ACTION_VIEW, uri).apply {
             if (pkg != null) setPackage(pkg)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
 
-        // Players conhecidos, do melhor para o pior em TV.
+        // Do melhor para o pior em TV; o de celular por último, mas ainda tentado.
         val knownPlayers = listOf(
             "com.google.android.youtube.tv",      // YouTube oficial para Android TV
             "com.teamsmart.videobase",            // SmartTubeNext
             "com.liskovsoft.smarttubetv",         // SmartTubeNext
             "com.liskovsoft.smarttubetv.beta",    // SmartTubeNext Beta
-            "com.google.android.youtube"          // YouTube celular, só se rodar em TV
+            "com.google.android.youtube"          // YouTube celular
         )
 
         for (pkg in knownPlayers) {
-            if (!isTelevisionApp(pkg)) continue
             val intent = viewIntent(watchUri, pkg)
             if (intent.resolveActivity(packageManager) != null && start(context, intent)) return
         }
 
-        // Qualquer outro app do aparelho que abra o link e seja de televisão.
-        val handlers = try {
-            packageManager.queryIntentActivities(viewIntent(watchUri, null), 0)
-        } catch (e: Exception) {
-            emptyList()
-        }
-        for (handler in handlers) {
-            val pkg = handler.activityInfo?.packageName ?: continue
-            if (!isTelevisionApp(pkg)) continue
-            if (start(context, viewIntent(watchUri, pkg))) return
-        }
+        // Nenhum dos conhecidos: deixa o sistema escolher entre o que estiver instalado.
+        val open = viewIntent(watchUri, null)
+        if (open.resolveActivity(packageManager) != null && start(context, open)) return
 
         // Formato antigo, ainda aceito por builds mais velhas do YouTube.
         val legacy = viewIntent(Uri.parse("vnd.youtube:${video.id}"), null)
         if (legacy.resolveActivity(packageManager) != null && start(context, legacy)) return
-
-        // Nada de televisão no aparelho: deixa o sistema escolher, é melhor que
-        // não fazer nada.
-        if (start(context, viewIntent(watchUri, null))) return
 
         android.widget.Toast.makeText(
             context,
