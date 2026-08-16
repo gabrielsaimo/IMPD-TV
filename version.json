@@ -1,5 +1,5 @@
 {
-  "versionCode": 3,
-  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1.2/impd-tv-1.2.apk",
-  "releaseNotes": "Vídeos voltam a abrir no player da TV, telefones da oração não saem mais cortados e o painel da igreja mostra a foto do Apóstolo."
+  "versionCode": 4,
+  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1.3/impd-tv-1.3.apk",
+  "releaseNotes": "Correção: vídeos do YouTube voltam a abrir em TV boxes com launcher próprio, como a TV Stick TVR3."
 }
