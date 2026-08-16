@@ -93,12 +93,16 @@
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp">
 
+            <!-- fitCenter, not centerCrop: the source photo is 306x267, so
+                 cropping it to a tall card would blow it up past two times its
+                 own size and cut the sides off. -->
             <ImageView
                 android:id="@+id/info_hero"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:contentDescription="@string/church_name"
-                android:scaleType="centerCrop"
+                android:padding="12dp"
+                android:scaleType="fitCenter"
                 android:src="@drawable/banner" />
         </androidx.cardview.widget.CardView>
 

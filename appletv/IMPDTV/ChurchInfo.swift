@@ -14,11 +14,16 @@ struct ChurchInfo: Equatable {
     var congregationCount: Int
     var heroImageURL: URL?
 
+    /// The portrait of the Apostle that impd.org.br itself shows. Fixed rather
+    /// than taken from the live channel, whose image is whatever thumbnail the
+    /// current broadcast happens to carry.
+    static let heroImage = URL(string: "https://impd.org.br/assets/s4219/images/Apostolo.webp")
+
     static let fallback = ChurchInfo(
         headOfficeAddress: "Rua Carneiro Leão, 439 - Brás, São Paulo - SP, 03040-000",
         email: "contato@impd.org.br",
         congregationCount: 554,
-        heroImageURL: nil
+        heroImageURL: heroImage
     )
 
     static let name = "Igreja Mundial do Poder de Deus"
@@ -64,16 +69,6 @@ enum ChurchInfoFetcher {
            let meta = root["meta"] as? [String: Any],
            let total = meta["total_count"] as? Int, total > 0 {
             info.congregationCount = total
-        }
-
-        if let root = try? await getJSON("\(apiBase)/inchurch_channel/home_live/"),
-           let channels = root["channels"] as? [[String: Any]] {
-            for channel in channels {
-                if let image = channel["image"] as? String, let url = URL(string: image) {
-                    info.heroImageURL = url
-                    break
-                }
-            }
         }
 
         return info

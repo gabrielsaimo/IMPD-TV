@@ -9,6 +9,26 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <!--
+        Android 11 hides installed packages from apps targeting API 30 and up
+        unless they are declared here. Without this the app cannot see that a
+        YouTube player exists: setPackage() throws for every one of them and
+        opening a video fails on exactly the boxes that can play it.
+    -->
+    <queries>
+        <package android:name="com.google.android.youtube.tv" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.teamsmart.videobase" />
+        <package android:name="com.liskovsoft.smarttubetv" />
+        <package android:name="com.liskovsoft.smarttubetv.beta" />
+
+        <!-- Anything else that can open a video link, browser included. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:banner="@drawable/banner"

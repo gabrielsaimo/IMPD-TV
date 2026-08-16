@@ -24,12 +24,19 @@ data class ChurchInfo(
     val heroImageUrl: String?
 ) {
     companion object {
+        /**
+         * The portrait of the Apostle that impd.org.br itself shows. Fixed
+         * rather than taken from the live channel, whose image is whatever
+         * thumbnail the current broadcast happens to carry.
+         */
+        const val HERO_IMAGE = "https://impd.org.br/assets/s4219/images/Apostolo.webp"
+
         val fallback = ChurchInfo(
             headOfficeName = "(SEDE) BRÁS, SÃO PAULO - SP",
             headOfficeAddress = "Rua Carneiro Leão, 439 - Brás, São Paulo - SP, 03040-000",
             email = "contato@impd.org.br",
             congregationCount = 554,
-            heroImageUrl = null
+            heroImageUrl = HERO_IMAGE
         )
     }
 }
@@ -71,22 +78,6 @@ object ChurchInfoFetcher {
                 val all = getJson("$API_BASE/tertiary_group/?limit=1&subgroup__app_id=$APP_ID")
                 val total = all.optJSONObject("meta")?.optInt("total_count", 0) ?: 0
                 if (total > 0) info = info.copy(congregationCount = total)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            try {
-                val live = getJson("$API_BASE/inchurch_channel/home_live/")
-                val channels = live.optJSONArray("channels")
-                if (channels != null) {
-                    for (i in 0 until channels.length()) {
-                        val image = channels.getJSONObject(i).optString("image", "")
-                        if (image.isNotBlank()) {
-                            info = info.copy(heroImageUrl = image)
-                            break
-                        }
-                    }
-                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }

@@ -81,10 +81,13 @@ struct ChurchInfoPanel: View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(Color.white.opacity(0.08))
             .overlay {
+                // scaledToFit, not Fill: the source photo is 306x267 and
+                // cropping it to a tall card would blow it up past twice its
+                // own size and cut the sides off.
                 AsyncImage(url: info.heroImageURL) { image in
-                    image.resizable().scaledToFill()
+                    image.resizable().scaledToFit().padding(16)
                 } placeholder: {
-                    Image(systemName: "building.columns")
+                    Image(systemName: "person.crop.square")
                         .font(.system(size: 96))
                         .foregroundStyle(.white.opacity(0.25))
                 }

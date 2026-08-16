@@ -259,7 +259,8 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.info_congregations_format, info.congregationCount)
         info.heroImageUrl?.let { url ->
             infoHero.load(url) {
-                size(640, 640)
+                // The source is 306x267; asking for more only wastes memory.
+                size(320, 320)
                 crossfade(true)
                 placeholder(R.drawable.banner)
                 error(R.drawable.banner)

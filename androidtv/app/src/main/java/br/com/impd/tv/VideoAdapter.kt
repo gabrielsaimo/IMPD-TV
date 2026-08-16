@@ -46,49 +46,82 @@ class VideoAdapter(private val videos: List<YoutubeVideo>) : RecyclerView.Adapte
             crossfade(true)
         }
         
-        holder.itemView.setOnClickListener {
-            val context = holder.itemView.context
-            
-            // Lista de pacotes comuns de YouTube em TV Boxes (priorizando o oficial de TV)
-            val packagesToTry = listOf(
-                "com.google.android.youtube.tv",      // YouTube oficial para Android TV
-                "com.google.android.youtube",         // YouTube mobile
-                "com.teamsmart.videobase",            // SmartTubeNext
-                "com.liskovsoft.smarttubetv.beta"     // SmartTubeNext Beta
-            )
+        holder.itemView.setOnClickListener { openVideo(holder.itemView.context, video) }
+    }
 
-            var launched = false
-            for (pkg in packagesToTry) {
-                try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=${video.id}"))
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    intent.setPackage(pkg)
-                    context.startActivity(intent)
-                    launched = true
-                    break
-                } catch (e: Exception) {
-                    // Pacote não encontrado, tenta o próximo
-                }
-            }
+    /**
+     * Hands the video to a player that can actually run on a television.
+     *
+     * The trap here is the phone build of YouTube: it happily claims the link,
+     * then finds no touchscreen, shows a black screen and quits. The box drops
+     * back to the home screen, which is this app, so from the sofa it looks
+     * like pressing OK did nothing.
+     *
+     * So a candidate is only used if the system reports a leanback launcher for
+     * it — that is the same signal Android TV itself uses to decide whether an
+     * app belongs on the television at all. Only when nothing on the box passes
+     * does it fall back to whatever will take the link.
+     */
+    private fun openVideo(context: android.content.Context, video: YoutubeVideo) {
+        val watchUri = Uri.parse("https://www.youtube.com/watch?v=${video.id}")
+        val packageManager = context.packageManager
 
-            if (!launched) {
-                try {
-                    // Fallback 1: Tenta o formato web sem forçar pacote (pode perguntar ao usuário)
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=${video.id}"))
-                    browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    context.startActivity(browserIntent)
-                } catch (e: Exception) {
-                    try {
-                        // Fallback 2: Formato antigo vnd.youtube
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:${video.id}"))
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        context.startActivity(intent)
-                    } catch (e2: Exception) {
-                        android.widget.Toast.makeText(context, "Aplicativo do YouTube não encontrado neste aparelho.", android.widget.Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
+        fun isTelevisionApp(pkg: String) =
+            packageManager.getLeanbackLaunchIntentForPackage(pkg) != null
+
+        fun viewIntent(uri: Uri, pkg: String?) = Intent(Intent.ACTION_VIEW, uri).apply {
+            if (pkg != null) setPackage(pkg)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
+
+        // Players conhecidos, do melhor para o pior em TV.
+        val knownPlayers = listOf(
+            "com.google.android.youtube.tv",      // YouTube oficial para Android TV
+            "com.teamsmart.videobase",            // SmartTubeNext
+            "com.liskovsoft.smarttubetv",         // SmartTubeNext
+            "com.liskovsoft.smarttubetv.beta",    // SmartTubeNext Beta
+            "com.google.android.youtube"          // YouTube celular, só se rodar em TV
+        )
+
+        for (pkg in knownPlayers) {
+            if (!isTelevisionApp(pkg)) continue
+            val intent = viewIntent(watchUri, pkg)
+            if (intent.resolveActivity(packageManager) != null && start(context, intent)) return
+        }
+
+        // Qualquer outro app do aparelho que abra o link e seja de televisão.
+        val handlers = try {
+            packageManager.queryIntentActivities(viewIntent(watchUri, null), 0)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        for (handler in handlers) {
+            val pkg = handler.activityInfo?.packageName ?: continue
+            if (!isTelevisionApp(pkg)) continue
+            if (start(context, viewIntent(watchUri, pkg))) return
+        }
+
+        // Formato antigo, ainda aceito por builds mais velhas do YouTube.
+        val legacy = viewIntent(Uri.parse("vnd.youtube:${video.id}"), null)
+        if (legacy.resolveActivity(packageManager) != null && start(context, legacy)) return
+
+        // Nada de televisão no aparelho: deixa o sistema escolher, é melhor que
+        // não fazer nada.
+        if (start(context, viewIntent(watchUri, null))) return
+
+        android.widget.Toast.makeText(
+            context,
+            "Nenhum aplicativo de vídeo encontrado neste aparelho.",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+    }
+
+    /** resolveActivity can still go stale between the check and the launch. */
+    private fun start(context: android.content.Context, intent: Intent): Boolean = try {
+        context.startActivity(intent)
+        true
+    } catch (e: Exception) {
+        false
     }
 
     override fun getItemCount() = videos.size
