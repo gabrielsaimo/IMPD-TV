@@ -66,7 +66,8 @@ class VideoAdapter(private val videos: List<YoutubeVideo>) : RecyclerView.Adapte
      * begin with — required since Android 11 for any app targeting API 30+.
      */
     private fun openVideo(context: android.content.Context, video: YoutubeVideo) {
-        val watchUri = Uri.parse("https://www.youtube.com/watch?v=${video.id}")
+        val watchUriHttps = Uri.parse("https://www.youtube.com/watch?v=${video.id}")
+        val watchUriVnd = Uri.parse("vnd.youtube:${video.id}")
 
         fun viewIntent(uri: Uri, pkg: String?) = Intent(Intent.ACTION_VIEW, uri).apply {
             if (pkg != null) setPackage(pkg)
@@ -83,14 +84,14 @@ class VideoAdapter(private val videos: List<YoutubeVideo>) : RecyclerView.Adapte
         )
 
         for (pkg in knownPlayers) {
-            if (start(context, viewIntent(watchUri, pkg))) return
+            // Algumas TV boxes requerem vnd.youtube para o app interno funcionar sem perguntar
+            if (start(context, viewIntent(watchUriVnd, pkg))) return
+            if (start(context, viewIntent(watchUriHttps, pkg))) return
         }
 
         // Nenhum dos conhecidos: deixa o sistema escolher entre o que estiver instalado.
-        if (start(context, viewIntent(watchUri, null))) return
-
-        // Formato antigo, ainda aceito por builds mais velhas do YouTube.
-        if (start(context, viewIntent(Uri.parse("vnd.youtube:${video.id}"), null))) return
+        if (start(context, viewIntent(watchUriVnd, null))) return
+        if (start(context, viewIntent(watchUriHttps, null))) return
 
         android.widget.Toast.makeText(
             context,
