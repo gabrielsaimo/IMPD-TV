@@ -1,5 +1,5 @@
 {
-  "versionCode": 2,
-  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1.1/impd-tv-1.1.apk",
-  "releaseNotes": "Sinal do canal agora é buscado automaticamente, painel com informações da igreja e melhorias de desempenho."
+  "versionCode": 3,
+  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1.2/impd-tv-1.2.apk",
+  "releaseNotes": "Vídeos voltam a abrir no player da TV, telefones da oração não saem mais cortados e o painel da igreja mostra a foto do Apóstolo."
 }
