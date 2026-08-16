@@ -52,46 +52,45 @@ class VideoAdapter(private val videos: List<YoutubeVideo>) : RecyclerView.Adapte
     /**
      * Hands the video to whichever player the box actually has.
      *
-     * Cheap Android TV sticks — this app's audience — often run a vendor
-     * launcher instead of the real Android TV/Google TV shell, and none of
-     * their apps declare a leanback launcher at all, working YouTube included.
-     * Requiring one, as an earlier version of this method did, rejected every
-     * app on exactly those boxes and broke playback entirely. So the only
-     * requirement here is that the package can resolve the intent — checked
-     * with the package manager rather than launched blind, because since
-     * Android 11 a target-SDK-30+ app cannot even see another app is
-     * installed unless it is declared in AndroidManifest's `<queries>`.
+     * This targets known packages by name with `setPackage`, one at a time,
+     * and just tries to launch — it does not pre-check with
+     * `resolveActivity()`. Many of the YouTube-for-TV builds that end up on
+     * cheap sticks are unofficial repackages that skip the manifest
+     * intent-filter a resolve check looks for, even though the app opens the
+     * video fine if asked directly; gating on that check meant a perfectly
+     * capable player was being skipped as if it were not installed. A failed
+     * launch is just a caught exception, same cost as the check would have
+     * been, so nothing is lost by trying first.
+     *
+     * `<queries>` in AndroidManifest is what makes these packages visible to
+     * begin with — required since Android 11 for any app targeting API 30+.
      */
     private fun openVideo(context: android.content.Context, video: YoutubeVideo) {
         val watchUri = Uri.parse("https://www.youtube.com/watch?v=${video.id}")
-        val packageManager = context.packageManager
 
         fun viewIntent(uri: Uri, pkg: String?) = Intent(Intent.ACTION_VIEW, uri).apply {
             if (pkg != null) setPackage(pkg)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
 
-        // Do melhor para o pior em TV; o de celular por último, mas ainda tentado.
+        // Do melhor para o pior em TV.
         val knownPlayers = listOf(
             "com.google.android.youtube.tv",      // YouTube oficial para Android TV
+            "com.google.android.youtube",         // YouTube oficial de celular
             "com.teamsmart.videobase",            // SmartTubeNext
             "com.liskovsoft.smarttubetv",         // SmartTubeNext
-            "com.liskovsoft.smarttubetv.beta",    // SmartTubeNext Beta
-            "com.google.android.youtube"          // YouTube celular
+            "com.liskovsoft.smarttubetv.beta"     // SmartTubeNext Beta
         )
 
         for (pkg in knownPlayers) {
-            val intent = viewIntent(watchUri, pkg)
-            if (intent.resolveActivity(packageManager) != null && start(context, intent)) return
+            if (start(context, viewIntent(watchUri, pkg))) return
         }
 
         // Nenhum dos conhecidos: deixa o sistema escolher entre o que estiver instalado.
-        val open = viewIntent(watchUri, null)
-        if (open.resolveActivity(packageManager) != null && start(context, open)) return
+        if (start(context, viewIntent(watchUri, null))) return
 
         // Formato antigo, ainda aceito por builds mais velhas do YouTube.
-        val legacy = viewIntent(Uri.parse("vnd.youtube:${video.id}"), null)
-        if (legacy.resolveActivity(packageManager) != null && start(context, legacy)) return
+        if (start(context, viewIntent(Uri.parse("vnd.youtube:${video.id}"), null))) return
 
         android.widget.Toast.makeText(
             context,
@@ -100,7 +99,6 @@ class VideoAdapter(private val videos: List<YoutubeVideo>) : RecyclerView.Adapte
         ).show()
     }
 
-    /** resolveActivity can still go stale between the check and the launch. */
     private fun start(context: android.content.Context, intent: Intent): Boolean = try {
         context.startActivity(intent)
         true
