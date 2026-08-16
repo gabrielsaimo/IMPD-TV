@@ -27,8 +27,8 @@ android {
         targetSdk = 35
         // versionCode is what UpdateManager compares against version.json, so it
         // has to go up on every release or no television will see the update.
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
     }
 
     signingConfigs {

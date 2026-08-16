@@ -156,9 +156,19 @@ class MainActivity : AppCompatActivity() {
 
         setupPixDrawer()
         setupChurchInfo()
-        
-        // Verifica se há atualizações remotamente
+    }
+
+    /**
+     * This activity is the television's home screen: nobody "reopens" it in
+     * the way a normal app gets reopened, so onCreate can go days without
+     * running again. onResume is what actually fires — every time the box
+     * wakes up, and every time the viewer comes back from a YouTube video or
+     * the Wi-Fi screen — so that is where the update check lives, on a loop
+     * that keeps checking for as long as the app stays on screen.
+     */
+    private val checkForUpdates: Runnable = Runnable {
         UpdateManager.checkForUpdates(this)
+        handler.postDelayed(checkForUpdates, UPDATE_CHECK_INTERVAL_MS)
     }
 
     override fun onResume() {
@@ -166,6 +176,8 @@ class MainActivity : AppCompatActivity() {
         isResumed = true
         registerNetworkCallback()
         initializePlayer()
+        handler.removeCallbacks(checkForUpdates)
+        handler.post(checkForUpdates)
     }
 
     private fun registerNetworkCallback() {
@@ -560,11 +572,16 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         isResumed = false
         unregisterNetworkCallback()
+        handler.removeCallbacks(checkForUpdates)
         releasePlayer()
     }
 
     override fun onDestroy() {
         releasePlayer()
         super.onDestroy()
+    }
+
+    companion object {
+        private const val UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000L
     }
 }

@@ -8,6 +8,7 @@ androidtv/build/
 androidtv/app/build/
 androidtv/.gradle/
 androidtv/local.properties
+androidtv/.kotlin/
 
 # Signing. The release key signs every future update: losing it means no
 # existing install can ever be upgraded again, and leaking it lets anyone
