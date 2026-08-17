@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Treze tamanhos de texto viravam catorze na tela seguinte, porque não havia
+    régua: um título de gaveta era 36sp de um lado e 32sp do outro sem motivo.
+    Aqui são seis, cada um com um trabalho. Uma tela nova escolhe um destes ou
+    a régua ganha um sétimo de propósito, não por descuido.
+-->
+<resources>
+
+    <!-- Só a tela de "sintonizando", lida do outro lado da sala sem óculos. -->
+    <style name="Text.Display" parent="">
+        <item name="android:textSize">52sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Nome de uma gaveta ou do painel. -->
+    <style name="Text.Title" parent="">
+        <item name="android:textSize">34sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Cabeçalho de seção dentro de uma tela. -->
+    <style name="Text.Headline" parent="">
+        <item name="android:textSize">26sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Texto corrido: endereço, descrição, instrução. -->
+    <style name="Text.Body" parent="">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- Título de bloco de vídeo, valor de campo. -->
+    <style name="Text.Label" parent="">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- Data, nome de canal, dica de tecla. O menor que ainda se lê de longe. -->
+    <style name="Text.Caption" parent="">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text_tertiary</item>
+    </style>
+
+    <!-- Rótulo de seção em caixa alta, sempre acompanhado do trilho azul. -->
+    <style name="Text.Eyebrow" parent="">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/brand_blue</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <!-- Números longos: telefone, conta, agência. Monoespaçado porque é o que
+         faz um número comprido ser lido dígito por dígito. -->
+    <style name="Text.Number" parent="">
+        <item name="android:textSize">30sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+
+</resources>

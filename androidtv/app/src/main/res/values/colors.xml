@@ -1,17 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Matches the blue used on impd.org.br, with the existing live-red accent. -->
-    <color name="brand_blue">#4A7FD4</color>
-    <color name="brand_red">#E53935</color>
 
-    <color name="surface_dark">#E6101010</color>
-    <color name="surface_dark_translucent">#CC101010</color>
+    <!-- Superfícies, do fundo para a frente. O que faltava antes era
+         justamente o meio da pilha: havia um fundo e nada mais, então cartão,
+         painel e gaveta eram todos a mesma cor e nada tinha camada. -->
+    <color name="bg">#FF05070A</color>
+    <color name="surface">#FF101418</color>
+    <color name="surface_raised">#FF1A2028</color>
+    <color name="outline">#FF2A323D</color>
+
+    <!-- Marca. O azul vem de impd.org.br; o vermelho é só do "ao vivo" e não
+         deve aparecer em mais nada, ou deixa de significar transmissão. -->
+    <color name="brand_blue">#FF4A7FD4</color>
+    <color name="brand_blue_deep">#FF2C4E86</color>
+    <color name="brand_blue_dim">#FFA9C4EE</color>
+    <color name="brand_red">#FFE53935</color>
+
+    <!-- Texto -->
     <color name="text_primary">#FFFFFFFF</color>
-    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="text_secondary">#FFB3BDCC</color>
+    <color name="text_tertiary">#FF7C8797</color>
 
-    <!-- Selection on the video row. White, not brand blue: the tile behind it is
-         a photograph of anything at all, and white is the one ring that stays
-         visible over every one of them. -->
+    <!-- Seleção. Branco, não azul da marca: atrás do anel está uma miniatura
+         que pode ser qualquer fotografia, e o branco é o único que sobrevive a
+         todas elas. -->
     <color name="focus_ring">#FFFFFFFF</color>
     <color name="focus_fill">#40FFFFFF</color>
+
+    <!-- Véus sobre o vídeo. Opacos ou quase: uma camada translúcida sobre
+         transmissão ao vivo obriga mistura de camadas a cada quadro, que é
+         exatamente o que uma box fraca não tem sobrando. -->
+    <color name="scrim_full">#F2000000</color>
+    <color name="scrim_panel">#F7060809</color>
+    <color name="overlay_pill">#EF0A0D11</color>
+    <color name="hairline">#33FFFFFF</color>
+    <color name="thumb_placeholder">#FF232B37</color>
+
 </resources>

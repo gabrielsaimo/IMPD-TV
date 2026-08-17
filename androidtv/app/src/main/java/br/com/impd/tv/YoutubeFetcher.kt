@@ -10,15 +10,38 @@ data class YoutubeVideo(
     val id: String,
     val title: String,
     val thumbnailUrl: String,
-    val published: String
+    val published: String,
+    /** Nome do canal, mostrado embaixo do título do bloco. */
+    val channel: String,
+    /** "16 ago", já formatado, para o bloco não formatar data ao rolar. */
+    val dateLabel: String
 )
 
 object YoutubeFetcher {
 
-    private val CHANNEL_IDS = listOf(
-        "UCfb8GIF7etM7HaMmBJ150qg", // Bispo Roberto Santana
-        "UCHxVJ4kWtbDbzAwzIJ-_QpA"  // Igreja Mundial Ao Vivo
+    private val CHANNELS = listOf(
+        "UCfb8GIF7etM7HaMmBJ150qg" to "Bispo Roberto Santana",
+        "UCHxVJ4kWtbDbzAwzIJ-_QpA" to "Igreja Mundial Ao Vivo"
     )
+
+    /**
+     * O feed traz o carimbo em ISO 8601. Formatar aqui, uma vez por vídeo, e
+     * não no adaptador: lá isso rodaria de novo a cada bloco que entra na tela
+     * enquanto a fileira rola, que é justamente quando a box não tem sobra.
+     */
+    private fun dateLabelFor(published: String): String = try {
+        val parser = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val date = parser.parse(published.take(10))
+        if (date == null) {
+            ""
+        } else {
+            java.text.SimpleDateFormat("dd MMM", java.util.Locale("pt", "BR"))
+                .format(date)
+                .replace(".", "")
+        }
+    } catch (e: Exception) {
+        ""
+    }
 
     /**
      * No cap: the row runs to the end of what the feeds carry, which is the
@@ -38,7 +61,7 @@ object YoutubeFetcher {
                 val factory = DocumentBuilderFactory.newInstance()
                 val builder = factory.newDocumentBuilder()
 
-                for (channelId in CHANNEL_IDS) {
+                for ((channelId, channelName) in CHANNELS) {
                     val url = URL("https://www.youtube.com/feeds/videos.xml?channel_id=$channelId")
                     val connection = url.openConnection() as HttpURLConnection
                     connection.requestMethod = "GET"
@@ -73,7 +96,12 @@ object YoutubeFetcher {
                                 // hqdefault, not maxresdefault: the latter 404s for any video
                                 // that was never uploaded in HD, leaving a blank tile.
                                 val thumbnailUrl = "https://img.youtube.com/vi/$videoId/hqdefault.jpg"
-                                allVideos.add(YoutubeVideo(videoId, title, thumbnailUrl, published))
+                                allVideos.add(
+                                    YoutubeVideo(
+                                        videoId, title, thumbnailUrl, published,
+                                        channelName, dateLabelFor(published)
+                                    )
+                                )
                             }
                         }
                     }

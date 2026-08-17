@@ -11,16 +11,13 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 
 /**
- * The video row, with a tile at the end that says what the row is doing.
+ * A fileira de vídeos, com um bloco no fim que diz o que ela está fazendo.
  *
- * That last tile is not decoration. Pressing right on a television gives no
- * indication of how much is left, so without it the row either sits empty
- * while the feeds are being fetched, or simply stops moving at the last video
- * with no way to tell "that is all there is" apart from "it broke".
- *
- * It is also where a failed load becomes recoverable: the row used to fetch
- * once, and a request that failed left an empty drawer that nothing would ever
- * retry.
+ * Esse último bloco não é enfeite. Apertar para a direita numa televisão não
+ * dá nenhuma noção de quanto falta, então sem ele a fileira ou fica vazia
+ * enquanto os feeds são buscados, ou simplesmente para de andar no último
+ * vídeo, sem como distinguir "acabou" de "quebrou". É também onde uma busca
+ * que falhou volta a ser recuperável.
  */
 class VideoAdapter(
     private val onRetry: () -> Unit
@@ -41,6 +38,8 @@ class VideoAdapter(
         val thumbnailCard: androidx.cardview.widget.CardView = view.findViewById(R.id.videoThumbnailCard)
         val thumbnail: ImageView = view.findViewById(R.id.videoThumbnail)
         val title: TextView = view.findViewById(R.id.videoTitle)
+        val date: TextView = view.findViewById(R.id.videoDate)
+        val channel: TextView = view.findViewById(R.id.videoChannel)
     }
 
     class StatusViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -51,26 +50,26 @@ class VideoAdapter(
     }
 
     /**
-     * Which tile is selected has to be readable from a sofa, by someone who is
-     * not looking for it. Scale alone was not: a tile slightly larger than its
-     * neighbours reads as nothing across a room, and once the row scrolls and
-     * the selected tile sits at the edge there is no neighbour left to compare
-     * it against. So the selected tile carries a white ring, a lit panel, a
-     * brighter title and the zoom, all at once. White rather than a brand
-     * colour because the thumbnail underneath is a photograph of anything.
+     * Qual bloco está selecionado tem de ser legível do sofá, por alguém que
+     * não está procurando. Só a escala não era: um bloco pouco maior que os
+     * vizinhos não se lê do outro lado da sala, e assim que a fileira rola e o
+     * selecionado vai para a ponta não sobra vizinho com que comparar. Por
+     * isso ele carrega anel, painel aceso, título mais claro e zoom, tudo
+     * junto. Branco e não azul da marca porque atrás está uma fotografia de
+     * qualquer coisa.
      */
-    private fun applyFocusEffect(view: View, hasFocus: Boolean, onCard: (Boolean) -> Unit) {
+    private fun applyFocus(view: View, hasFocus: Boolean, extra: (Boolean) -> Unit) {
         val scale = if (hasFocus) 1.10f else 1.0f
         view.animate().scaleX(scale).scaleY(scale).setDuration(180).start()
-        onCard(hasFocus)
-        // The focused tile is scaled up and must not be painted under its neighbour.
+        extra(hasFocus)
+        // O bloco em foco está ampliado e não pode ser pintado por baixo do vizinho.
         if (hasFocus) view.bringToFront()
     }
 
     override fun getItemViewType(position: Int) =
         if (position == videos.size) TYPE_STATUS else TYPE_VIDEO
 
-    /** Always one more than the videos: the status tile closes every row. */
+    /** Sempre um a mais que os vídeos: o bloco de estado fecha toda fileira. */
     override fun getItemCount() = videos.size + 1
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -80,9 +79,7 @@ class VideoAdapter(
             val view = inflater.inflate(R.layout.item_video_status, parent, false)
             val holder = StatusViewHolder(view)
             view.setOnFocusChangeListener { v, hasFocus ->
-                applyFocusEffect(v, hasFocus) {
-                    holder.title.setTextColor(textColor(v, it))
-                }
+                applyFocus(v, hasFocus) { holder.title.setTextColor(titleColor(v, it)) }
             }
             return holder
         }
@@ -90,7 +87,7 @@ class VideoAdapter(
         val view = inflater.inflate(R.layout.item_video, parent, false)
         val holder = VideoViewHolder(view)
         view.setOnFocusChangeListener { v, hasFocus ->
-            applyFocusEffect(v, hasFocus) { focused ->
+            applyFocus(v, hasFocus) { focused ->
                 holder.thumbnailCard.cardElevation = if (focused) 16f else 0f
                 holder.thumbnailCard.foreground =
                     if (focused) {
@@ -98,16 +95,15 @@ class VideoAdapter(
                     } else {
                         null
                     }
-                holder.title.setTextColor(textColor(v, focused))
+                holder.title.setTextColor(titleColor(v, focused))
             }
         }
         return holder
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        // A recycled tile arrives wearing the selection of whichever tile it was
-        // last, and scrolled far enough off screen it never gets the focus
-        // change that would take it off.
+        // Um bloco reciclado chega vestindo a seleção do bloco que era antes, e
+        // rolado longe o bastante nunca recebe o evento de foco que a tiraria.
         if (!holder.itemView.hasFocus()) {
             holder.itemView.scaleX = 1.0f
             holder.itemView.scaleY = 1.0f
@@ -121,18 +117,23 @@ class VideoAdapter(
 
     private fun bindVideo(holder: VideoViewHolder, video: YoutubeVideo) {
         holder.title.text = video.title
+        holder.channel.text = video.channel
+        holder.date.text = video.dateLabel
+        holder.date.visibility = if (video.dateLabel.isEmpty()) View.GONE else View.VISIBLE
+
         holder.thumbnail.load(video.thumbnailUrl) {
-            // The source is a 1280x720 YouTube thumbnail; decoding it at the
-            // 320x180 size it's actually shown at matters on weak TV boxes.
-            size(320, 180)
+            // A origem é uma miniatura do YouTube de 1280x720; decodificá-la no
+            // tamanho em que ela realmente aparece importa numa box fraca.
+            size(224, 126)
             crossfade(true)
         }
 
-        if (!holder.itemView.hasFocus()) {
+        val focused = holder.itemView.hasFocus()
+        if (!focused) {
             holder.thumbnailCard.cardElevation = 0f
             holder.thumbnailCard.foreground = null
         }
-        holder.title.setTextColor(textColor(holder.itemView, holder.itemView.hasFocus()))
+        holder.title.setTextColor(titleColor(holder.itemView, focused))
 
         holder.itemView.setOnClickListener {
             VideoLauncher.open(holder.itemView.context, video)
@@ -146,7 +147,6 @@ class VideoAdapter(
 
         when (state) {
             State.LOADING -> {
-                holder.icon.text = ""
                 holder.title.setText(R.string.videos_loading)
                 holder.detail.text = ""
             }
@@ -162,14 +162,14 @@ class VideoAdapter(
             }
         }
 
-        holder.title.setTextColor(textColor(holder.itemView, holder.itemView.hasFocus()))
-        // Only a failed row has anything to press; the other two just report.
+        holder.title.setTextColor(titleColor(holder.itemView, holder.itemView.hasFocus()))
+        // Só uma fileira que falhou tem o que apertar; as outras duas relatam.
         holder.itemView.setOnClickListener(
             if (state == State.ERROR) View.OnClickListener { onRetry() } else null
         )
     }
 
-    private fun textColor(view: View, focused: Boolean) = ContextCompat.getColor(
+    private fun titleColor(view: View, focused: Boolean) = ContextCompat.getColor(
         view.context,
         if (focused) R.color.text_primary else R.color.text_secondary
     )

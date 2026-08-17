@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
-    private lateinit var banner: View
+    private lateinit var overlayTop: View
     private lateinit var statusCard: View
     private lateinit var statusTitle: android.widget.TextView
     private lateinit var statusDetail: android.widget.TextView
@@ -58,6 +58,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomDrawer: View
     private lateinit var youtubeRecyclerView: RecyclerView
     private lateinit var youtubeAdapter: VideoAdapter
+    private lateinit var videosCount: android.widget.TextView
     private var isYoutubeLoaded = false
     private var isYoutubeLoading = false
     
@@ -77,7 +78,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var infoQrSite: ImageView
 
     private val handler = Handler(Looper.getMainLooper())
-    private val hideBanner = Runnable { banner.visibility = View.GONE }
+    private val hideBanner = Runnable { setOverlaysVisible(false) }
     private var retryCount = 0
 
     /** Last stream URL that actually loaded; used as a fallback if a re-resolve fails mid-retry. */
@@ -101,6 +102,19 @@ class MainActivity : AppCompatActivity() {
     private var hasOfferedWifiSettings = false
     private var networkCallbackRegistered = false
 
+    /**
+     * Se a transmissão já tocou uma vez, este aparelho tem rede, e nenhuma
+     * queda posterior pode mandar ninguém para os ajustes de Wi-Fi.
+     *
+     * Isto existe porque a garantia de "no máximo uma vez" estava furada: o
+     * sinalizador era rearmado a cada STATE_READY, ou seja, toda vez que o
+     * vídeo voltava. Numa conexão instável isso vira um ciclo — toca, rearma,
+     * cai, abre o Wi-Fi, o espectador volta, toca, rearma — e a televisão é
+     * arrancada da pessoa de minuto em minuto, exatamente o que o código dizia
+     * estar evitando.
+     */
+    private var hasEverPlayed = false
+
     private val retryStream = Runnable { loadStream() }
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -122,7 +136,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         playerView = findViewById(R.id.player)
-        banner = findViewById(R.id.banner)
+        overlayTop = findViewById(R.id.overlay_top)
         statusCard = findViewById(R.id.status)
         statusTitle = findViewById(R.id.statusTitle)
         statusDetail = findViewById(R.id.statusDetail)
@@ -134,6 +148,7 @@ class MainActivity : AppCompatActivity() {
         pixText2 = findViewById(R.id.pix_text_2)
 
         bottomDrawer = findViewById(R.id.bottom_drawer)
+        videosCount = findViewById(R.id.videos_count)
         youtubeRecyclerView = findViewById(R.id.youtube_recycler_view)
         youtubeRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         youtubeRecyclerView.setHasFixedSize(true)
@@ -293,10 +308,10 @@ class MainActivity : AppCompatActivity() {
             when (state) {
                 Player.STATE_READY -> {
                     retryCount = 0
-                    // Playing again means the offer was consumed: if this box is
-                    // later carried somewhere its network does not reach, it gets
-                    // one fresh chance to send someone to the Wi-Fi screen.
-                    hasOfferedWifiSettings = false
+                    // Um aparelho que já tocou está conectado. O que vier depois
+                    // é queda passageira, e não pode mais tirar a televisão de
+                    // quem está assistindo.
+                    hasEverPlayed = true
                     hideStatus()
                     revealBanner()
                 }
@@ -346,7 +361,10 @@ class MainActivity : AppCompatActivity() {
      * from the viewer over and over on a flaky connection.
      */
     private fun offerWifiSettingsOnce() {
-        if (hasOfferedWifiSettings) return
+        // Só um aparelho que nunca conseguiu tocar precisa de uma pessoa. Todo
+        // o resto se recupera sozinho, e o networkCallback retoma a
+        // transmissão no instante em que a rede volta.
+        if (hasEverPlayed || hasOfferedWifiSettings) return
         hasOfferedWifiSettings = true
         try {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
@@ -392,6 +410,8 @@ class MainActivity : AppCompatActivity() {
                 if (isBottomDrawerOpen) {
                     super.onKeyDown(keyCode, event)
                 } else if (!isAnyDrawerOpen) {
+                    setOverlaysVisible(false)
+                    handler.removeCallbacks(hideBanner)
                     bottomDrawer.visibility = View.VISIBLE
                     youtubeRecyclerView.requestFocus()
                     if (!isYoutubeLoaded) loadYoutubeVideos()
@@ -428,10 +448,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                if (isBottomDrawerOpen || isStartDrawerOpen) {
+                if (isStartDrawerOpen) {
+                    // A gaveta da esquerda abre com ◀ e tem de fechar com ▶, que
+                    // é o que o rodapé dela promete. Antes a tecla caía no
+                    // super e não fazia nada: só o BACK fechava.
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                } else if (isBottomDrawerOpen) {
                     // Let the list navigate items horizontally
                     super.onKeyDown(keyCode, event)
                 } else if (!isEndDrawerOpen && !isAnyDrawerOpen) {
+                    setOverlaysVisible(false)
+                    handler.removeCallbacks(hideBanner)
                     drawerLayout.openDrawer(GravityCompat.END)
                     true
                 } else {
@@ -446,6 +474,8 @@ class MainActivity : AppCompatActivity() {
                     drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 } else if (!isStartDrawerOpen && !isAnyDrawerOpen) {
+                    setOverlaysVisible(false)
+                    handler.removeCallbacks(hideBanner)
                     drawerLayout.openDrawer(GravityCompat.START)
                     true
                 } else {
@@ -486,6 +516,9 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     isYoutubeLoaded = true
                     youtubeAdapter.submit(videos, VideoAdapter.State.DONE)
+                    videosCount.text =
+                        getString(R.string.videos_count_format, videos.size)
+                    videosCount.visibility = View.VISIBLE
                 }
                 youtubeRecyclerView.requestFocus()
             },
@@ -499,14 +532,34 @@ class MainActivity : AppCompatActivity() {
 
     // MARK: - Overlays
 
+    /**
+     * A faixa ao vivo e as dicas de tecla andam juntas: as duas flutuam sobre
+     * o vídeo, e as duas somem no instante em que qualquer painel abre. As
+     * dicas ficam na base da tela, exatamente onde a gaveta de vídeos sobe, e
+     * uma gaveta opaca por cima delas seria a única coisa neste app desenhada
+     * em cima de outra.
+     */
+    private fun setOverlaysVisible(visible: Boolean) {
+        overlayTop.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+
+    private fun isAnyPanelOpen() =
+        bottomDrawer.visibility == View.VISIBLE ||
+            infoPanel.visibility == View.VISIBLE ||
+            statusCard.visibility == View.VISIBLE ||
+            drawerLayout.isDrawerOpen(GravityCompat.START) ||
+            drawerLayout.isDrawerOpen(GravityCompat.END)
+
     private fun revealBanner() {
-        banner.visibility = View.VISIBLE
+        // Com um painel aberto não há vídeo à mostra para legendar.
+        if (isAnyPanelOpen()) return
+        setOverlaysVisible(true)
         handler.removeCallbacks(hideBanner)
         handler.postDelayed(hideBanner, 6_000)
     }
 
     private fun showInfoPanel() {
-        banner.visibility = View.GONE
+        setOverlaysVisible(false)
         handler.removeCallbacks(hideBanner)
         infoPanel.visibility = View.VISIBLE
         infoPanel.requestFocus()
@@ -521,7 +574,7 @@ class MainActivity : AppCompatActivity() {
         statusTitle.text = title
         statusDetail.text = detail
         statusCard.visibility = View.VISIBLE
-        banner.visibility = View.GONE
+        setOverlaysVisible(false)
     }
 
     private fun hideStatus() {

@@ -9,8 +9,33 @@
     <string name="no_network_title">Conectando à internet…</string>
     <string name="no_network_detail">Escolha a sua rede Wi-Fi na tela que abriu. A transmissão começa sozinha assim que conectar.</string>
 
+    <!-- Faixa ao vivo e dicas de tecla -->
+    <string name="channel_name">IMPD TV</string>
+    <string name="key_hints_all">▲ A igreja   ·   ▼ Vídeos   ·   ◀ Oração   ·   ▶ Doar por PIX</string>
+
+    <!-- Gaveta de doação -->
+    <string name="pix_eyebrow">▶ Doação</string>
+    <string name="pix_title">Doar por PIX</string>
+    <string name="bank_label">Banco</string>
+    <string name="bank_value">237</string>
+    <string name="agency_label">Agência</string>
+    <string name="agency_value">3394</string>
+    <string name="account_label">Conta</string>
+    <string name="account_value">100.000-4</string>
+
+    <!-- Gaveta de oração -->
+    <string name="prayer_eyebrow">◀ Oração</string>
+    <string name="prayer_title">Pedidos de oração</string>
+    <string name="prayer_number_label">Central de oração</string>
+
+    <!-- Rodapés das gavetas -->
+    <string name="back_left">◀ voltar para a transmissão</string>
+    <string name="back_right">▶ voltar para a transmissão</string>
+    <string name="back_up">▲ voltar para a transmissão</string>
+
     <!-- Video row -->
-    <string name="videos_title">Últimos Vídeos e Lives</string>
+    <string name="videos_title">Últimos vídeos e lives</string>
+    <string name="videos_count_format">%1$d vídeos</string>
     <string name="videos_loading">Carregando vídeos…</string>
     <string name="videos_end">Fim da lista</string>
     <string name="videos_end_detail">Você chegou ao último vídeo</string>

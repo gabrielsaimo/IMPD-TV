@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Faixa de cabeçalho das gavetas. Degradê em shape XML: o sistema rasteriza
+     uma vez e reaproveita, então custa o mesmo que uma cor chapada por quadro. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:startColor="@color/brand_blue_deep"
+        android:endColor="#FF16233C" />
+</shape>

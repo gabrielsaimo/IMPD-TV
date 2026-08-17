@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Drawn over the thumbnail of the focused tile. Four density-independent
-    pixels is heavy for a phone and about right for a television: the viewer is
-    across the room, and a hairline outline disappears at that distance.
--->
+<!-- Anel sobre a miniatura em foco. Quatro dp é pesado num telefone e certo
+     numa televisão: quem olha está do outro lado da sala e um fio de contorno
+     desaparece nessa distância. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <solid android:color="@android:color/transparent" />
-    <stroke
-        android:width="4dp"
-        android:color="@color/focus_ring" />
-    <corners android:radius="12dp" />
+    <stroke android:width="@dimen/focus_ring_width" android:color="@color/focus_ring" />
+    <corners android:radius="@dimen/radius_md" />
 </shape>

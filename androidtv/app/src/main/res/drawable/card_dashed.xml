@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bloco final da fileira: contorno tracejado diz "aqui acaba" sem precisar
+     competir com um bloco de vídeo de verdade. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke
+        android:width="@dimen/hairline_width"
+        android:color="@color/outline"
+        android:dashWidth="6dp"
+        android:dashGap="4dp" />
+    <corners android:radius="@dimen/radius_lg" />
+</shape>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vermelho sólido atrás de "AO VIVO". Um ponto piscando sozinho precisa ser
+     interpretado; a palavra escrita em bloco vermelho não precisa. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/brand_red" />
+</shape>

@@ -1,23 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    240dp de largura mais 16dp de margem numa tela de 960dp: cabem quatro
+    blocos. Com os 320dp de antes cabiam 2,8, e a fileira parecia cortada
+    porque estava mesmo — ninguém via que havia mais coisa além do terceiro.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="320dp"
+    android:layout_width="@dimen/video_tile_width"
     android:layout_height="wrap_content"
-    android:layout_marginEnd="24dp"
+    android:layout_marginEnd="@dimen/space_2"
     android:background="@drawable/video_tile_background"
     android:clickable="true"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:focusable="true"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="@dimen/video_tile_padding">
 
     <androidx.cardview.widget.CardView
         android:id="@+id/videoThumbnailCard"
         android:layout_width="match_parent"
-        android:layout_height="180dp"
-        app:cardBackgroundColor="#333333"
-        app:cardCornerRadius="12dp"
+        android:layout_height="@dimen/video_thumb_height"
+        app:cardBackgroundColor="@color/thumb_placeholder"
+        app:cardCornerRadius="@dimen/radius_md"
         app:cardElevation="0dp">
 
         <ImageView
@@ -25,17 +30,47 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop" />
+
+        <!-- Sombra só na base: a data precisa sobreviver a uma cena clara. -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/thumb_scrim" />
+
+        <TextView
+            android:id="@+id/videoDate"
+            style="@style/Text.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="6dp"
+            android:background="@drawable/badge_dark"
+            android:fontFamily="monospace"
+            android:paddingStart="6dp"
+            android:paddingTop="1dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="1dp"
+            android:textColor="@color/text_primary" />
     </androidx.cardview.widget.CardView>
 
     <TextView
         android:id="@+id/videoTitle"
+        style="@style/Text.Label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="@dimen/space_1"
         android:ellipsize="end"
         android:maxLines="2"
-        android:textColor="@color/text_secondary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:minLines="2" />
+
+    <TextView
+        android:id="@+id/videoChannel"
+        style="@style/Text.Caption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1" />
 
 </LinearLayout>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Trilho azul dos rótulos de seção. É onde o azul da marca finalmente
+     aparece em todas as telas, e não só em três rótulos de um painel. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/brand_blue" />
+    <corners android:radius="2dp" />
+</shape>

@@ -1,58 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Sits at the end of the video row and says what the row is doing: still
-    loading, finished, or failed. Same width and top alignment as a video tile
-    so it reads as part of the row and not as something floating after it.
+    Fecha a fileira e diz o que ela está fazendo. Apertar para a direita numa
+    televisão não dá noção de quanto falta: sem este bloco a fileira ou fica
+    vazia enquanto carrega, ou simplesmente para de andar no último vídeo, e
+    daí não há como distinguir "acabou" de "quebrou".
+
+    A altura acompanha a do bloco de vídeo, então a linha de base da fileira
+    não quebra quando ele entra.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="280dp"
+    android:layout_width="@dimen/video_status_tile_width"
     android:layout_height="wrap_content"
-    android:layout_marginEnd="24dp"
+    android:layout_marginEnd="@dimen/space_2"
     android:background="@drawable/video_tile_background"
     android:clickable="true"
     android:clipChildren="false"
     android:focusable="true"
-    android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="@dimen/video_tile_padding">
 
-    <FrameLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="180dp">
+        android:layout_height="@dimen/video_thumb_height"
+        android:background="@drawable/card_dashed"
+        android:gravity="center"
+        android:orientation="vertical">
 
         <ProgressBar
             android:id="@+id/statusSpinner"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_gravity="center"
-            android:indeterminateTint="@color/text_primary" />
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/brand_blue" />
 
         <TextView
             android:id="@+id/statusIcon"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:textColor="@color/text_secondary"
-            android:textSize="48sp" />
-    </FrameLayout>
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/brand_blue"
+            android:textSize="40sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/statusTitle"
+        style="@style/Text.Label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:gravity="center"
-        android:textColor="@color/text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:layout_marginTop="@dimen/space_1"
+        android:ellipsize="end"
+        android:maxLines="1" />
 
     <TextView
         android:id="@+id/statusDetail"
+        style="@style/Text.Caption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:gravity="center"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp" />
+        android:ellipsize="end"
+        android:maxLines="1" />
 
 </LinearLayout>
