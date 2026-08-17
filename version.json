@@ -1,5 +1,5 @@
 {
-  "versionCode": 9,
-  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1.8/impd-tv-1.8.apk",
-  "releaseNotes": "Vídeo que não abre: o app tenta o próximo player do aparelho sozinho, em vez de voltar para a tela inicial sem avisar. A lista de vídeos agora vai até o fim."
+  "versionCode": 11,
+  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v2.0/impd-tv-2.0.apk",
+  "releaseNotes": "Corrige a tela de Wi-Fi que abria sozinha de minuto em minuto durante a transmissão. O app também está com visual novo: a transmissão deixa de sumir atrás dos painéis, dá para ver qual vídeo está selecionado, e cada painel diz onde você está e qual tecla volta."
 }
