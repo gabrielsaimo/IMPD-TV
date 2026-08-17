@@ -135,10 +135,11 @@
     <LinearLayout
         android:id="@+id/bottom_drawer"
         android:layout_width="match_parent"
-        android:layout_height="360dp"
+        android:layout_height="400dp"
         android:layout_gravity="bottom"
         android:background="@color/surface_dark"
         android:clickable="true"
+        android:clipChildren="false"
         android:focusable="true"
         android:orientation="vertical"
         android:padding="28dp">
@@ -156,6 +157,7 @@
             android:id="@+id/youtube_recycler_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:clipChildren="false"
             android:clipToPadding="false"
             android:paddingEnd="24dp" />
 

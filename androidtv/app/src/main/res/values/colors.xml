@@ -8,4 +8,10 @@
     <color name="surface_dark_translucent">#CC101010</color>
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#B3FFFFFF</color>
+
+    <!-- Selection on the video row. White, not brand blue: the tile behind it is
+         a photograph of anything at all, and white is the one ring that stays
+         visible over every one of them. -->
+    <color name="focus_ring">#FFFFFFFF</color>
+    <color name="focus_fill">#40FFFFFF</color>
 </resources>

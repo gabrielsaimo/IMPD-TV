@@ -1,5 +1,6 @@
 package br.com.impd.tv
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,36 +9,46 @@ import android.os.SystemClock
 import android.widget.Toast
 
 /**
- * Opens a YouTube video on a box whose contents we cannot know in advance.
+ * Opens a YouTube video in a YouTube app — never in a browser.
  *
- * Two failures happen out in the field and only one of them is an exception:
+ * A browser is not a fallback here, it is a failure with a picture. On a
+ * television it cannot be driven with a remote, and youtube.com in it either
+ * refuses to play or plays badly. So no browser is ever a candidate: if every
+ * real player fails, this says so out loud instead of quietly handing the
+ * viewer something unusable.
  *
- * 1. Nothing on the box answers the link. `startActivity` throws, we move on.
- * 2. Something answers it, opens, and dies a second later. The phone build of
- *    YouTube does exactly this on a set-top box: it takes the link, finds no
- *    touchscreen, shows a black screen and quits. Some players do the same with
- *    the old `vnd.youtube:` deep link. The television drops back to the home
- *    screen, which is this app, so from the sofa it looks like pressing OK did
- *    nothing at all.
+ * Two things go wrong when handing a video away, and only one of them is an
+ * exception:
  *
- * The second one cannot be caught, only observed: if this activity comes back
- * to the foreground within [BOUNCE_WINDOW_MS] of handing a video away, nobody
- * watched anything, and the candidate is treated as failed exactly like a
- * thrown exception — [onHostResumed] resumes the cascade at the next one. A
- * viewer who really did watch and came back takes far longer than that, and the
- * pending attempt is dropped.
+ * 1. Nothing answers. `startActivity` throws and the next candidate is tried.
+ * 2. Something answers, opens, and dies a second later. The phone build of
+ *    YouTube does this on a set-top box — it takes the link, finds no
+ *    touchscreen, shows a black screen and quits. Some players do the same on
+ *    the old `vnd.youtube:` deep link. The box drops back to the home screen,
+ *    which is this app, so from the sofa it looks like nothing happened.
  *
- * Candidates are ordered, never filtered. Leanback comes first because that is
- * how Android TV itself decides an app belongs on a television, but cheap boxes
- * run a manufacturer launcher where nothing declares leanback at all — YouTube
- * included, working fine — so a plain app is still tried, just last. Ordering
- * where an earlier attempt used a filter is the whole fix: the filter version
- * opened nothing on those boxes, the unfiltered version opened the phone build
- * first and it died on screen.
+ * The second cannot be caught, only observed: if MainActivity returns to the
+ * foreground within [BOUNCE_WINDOW_MS] of a hand-off, nobody watched anything
+ * and the candidate counts as failed exactly like a thrown exception —
+ * [onHostResumed] resumes the cascade at the next one.
+ *
+ * Because a player that quits costs a whole round trip through onResume to
+ * detect, each YouTube app gets several ways in before the cascade moves on to
+ * the next app: the plain https link, both spellings of the vnd.youtube deep
+ * link, and every activity that package itself declares for a YouTube address,
+ * launched by explicit component. A repackaged build that ignores one of these
+ * usually answers another.
  */
 object VideoLauncher {
 
-    /** Kept in sync with `<queries>` in AndroidManifest, or none of these are visible. */
+    /**
+     * YouTube players we know by name, best to worst for a television. Must
+     * stay in sync with `<queries>` in AndroidManifest, or none are visible.
+     *
+     * The phone build is last on purpose: it is the one that opens and dies on
+     * a box with no touchscreen, and it is also the one most likely to be
+     * installed, so anything else on the aparelho gets first refusal.
+     */
     private val KNOWN_PLAYERS = listOf(
         "com.google.android.youtube.tv",      // YouTube oficial para Android TV
         "com.teamsmart.videobase",            // SmartTubeNext
@@ -48,20 +59,40 @@ object VideoLauncher {
         "com.google.android.youtube"          // YouTube de celular: morre em TV, vai por último
     )
 
-    /**
-     * Long enough that a player which merely starts slowly is not mistaken for
-     * one that quit, short enough that nobody watches a video inside it.
-     */
-    private const val BOUNCE_WINDOW_MS = 4_000L
+    /** Catches repackaged players whose exact name cannot be known in advance. */
+    private val NAME_HINTS = listOf("youtube", "smarttube", "newpipe", "tubi", "vanced")
 
-    private class Attempt(val candidates: List<Intent>, var next: Int, var launchedAt: Long)
+    /**
+     * A player that quits on a box it cannot run on dies almost immediately —
+     * well inside two seconds. The window has to stay under the time it takes
+     * a viewer to open a video, change their mind and press back, because that
+     * looks identical from here and must not be answered by launching a
+     * different player at them.
+     */
+    private const val BOUNCE_WINDOW_MS = 2_000L
+
+    /**
+     * A bounce costs a visible flash of a player opening and closing. Past a
+     * few of those in a row the box clearly has nothing that works, and saying
+     * so beats flashing through the rest of the list.
+     */
+    private const val MAX_BOUNCES = 4
+
+    private class Attempt(
+        val candidates: List<Intent>,
+        var next: Int,
+        var launchedAt: Long,
+        var bounces: Int = 0
+    )
 
     private var pending: Attempt? = null
 
+    /** Filled while building the list, so a failure can say what the box has. */
+    private var lastSeenPlayers: List<String> = emptyList()
+
     fun open(context: Context, video: YoutubeVideo) {
         pending = null
-        val candidates = buildCandidates(context, video)
-        advance(context, Attempt(candidates, 0, 0L))
+        advance(context, Attempt(buildCandidates(context, video), 0, 0L))
     }
 
     /**
@@ -72,6 +103,11 @@ object VideoLauncher {
         val attempt = pending ?: return
         pending = null
         if (SystemClock.elapsedRealtime() - attempt.launchedAt >= BOUNCE_WINDOW_MS) return
+        attempt.bounces++
+        if (attempt.bounces > MAX_BOUNCES) {
+            reportFailure(context)
+            return
+        }
         advance(context, attempt)
     }
 
@@ -87,53 +123,90 @@ object VideoLauncher {
             }
         }
 
+        reportFailure(context)
+    }
+
+    /**
+     * Naming what was found turns "não abriu" into something a person can read
+     * off the television and repeat to whoever maintains this.
+     */
+    private fun reportFailure(context: Context) {
+        val found = if (lastSeenPlayers.isEmpty()) {
+            "Nenhum app de vídeo instalado."
+        } else {
+            "Tentados: " + lastSeenPlayers.joinToString(", ")
+        }
         Toast.makeText(
             context,
-            "Nenhum aplicativo de vídeo conseguiu abrir neste aparelho.",
+            "Não foi possível abrir o vídeo neste aparelho.\n$found",
             Toast.LENGTH_LONG
         ).show()
     }
 
-    /**
-     * Every candidate names its package. An intent with no package makes the
-     * system put up the "Abrir com" chooser, drawn in a phone layout over a
-     * leanback ROM that may not even focus it with a remote — a dead end in
-     * front of the elderly audience this app is for. The chooser is only
-     * reached after every named package has been tried and failed.
-     */
     private fun buildCandidates(context: Context, video: YoutubeVideo): List<Intent> {
-        val https = Uri.parse("https://www.youtube.com/watch?v=${video.id}")
-        val vnd = Uri.parse("vnd.youtube:${video.id}")
         val pm = context.packageManager
+        val https = Uri.parse("https://www.youtube.com/watch?v=${video.id}")
+        // Both spellings exist in the wild and different builds answer different
+        // ones; neither is reliable enough to be the only deep link tried.
+        val vndSlash = Uri.parse("vnd.youtube://${video.id}")
+        val vndPlain = Uri.parse("vnd.youtube:${video.id}")
 
-        val known = KNOWN_PLAYERS.filter { isInstalled(pm, it) }
-        val discovered = handlersFor(context, https).filterNot { it in KNOWN_PLAYERS }
         val browsers = browserPackages(pm)
+        val known = KNOWN_PLAYERS.filter { isInstalled(pm, it) }
+        val discovered = handlersFor(pm, https)
+            .filterNot { it in KNOWN_PLAYERS || it == context.packageName }
+            // A player that also happens to claim every web address stays; only
+            // a package with nothing YouTube about its name is dropped as a browser.
+            .filterNot { it in browsers && !isYoutubeApp(it) }
 
-        // Leanback first, browsers last, everything else in between.
-        val ordered =
-            known.filter { isTelevisionApp(pm, it) } +
-                discovered.filter { it !in browsers && isTelevisionApp(pm, it) } +
-                known.filterNot { isTelevisionApp(pm, it) } +
-                discovered.filter { it !in browsers && !isTelevisionApp(pm, it) } +
-                discovered.filter { it in browsers }
+        // Leanback first: it is the signal Android TV itself uses to say an app
+        // belongs on a television. Only an ordering hint, never a filter — on a
+        // box running a manufacturer launcher nothing declares leanback at all.
+        val players = (known.filter { isTelevisionApp(pm, it) } +
+            discovered.filter { isTelevisionApp(pm, it) } +
+            known.filterNot { isTelevisionApp(pm, it) } +
+            discovered.filterNot { isTelevisionApp(pm, it) }).distinct()
+
+        lastSeenPlayers = players
 
         val candidates = mutableListOf<Intent>()
-        for (pkg in ordered.distinct()) {
-            // https first: it is the form every current build handles. The
-            // vnd deep link is older and some players now open on it and quit.
+        for (pkg in players) {
+            // https first: the form every current build handles. The deep links
+            // are older, and there are players that open on them and quit.
             candidates += viewIntent(https, pkg)
-            if (pkg !in browsers) candidates += viewIntent(vnd, pkg)
+            candidates += viewIntent(vndSlash, pkg)
+            candidates += viewIntent(vndPlain, pkg)
+            // Explicit component: some repackaged builds have an activity that
+            // plays the video fine but a manifest filter the system will not
+            // match, so setPackage alone never reaches it.
+            for (component in componentsFor(pm, pkg, https)) {
+                candidates += viewIntent(https, null).setComponent(component)
+            }
         }
-        candidates += viewIntent(https, null)
-        candidates += viewIntent(vnd, null)
+
+        // Absolute last resort, and still not a browser: open the YouTube app
+        // on its own home screen. The viewer lands somewhere they can actually
+        // use a remote in, instead of a web page they cannot.
+        for (pkg in players.filter { isYoutubeApp(it) }) {
+            launchIntent(pm, pkg)?.let { candidates += it }
+        }
         return candidates
     }
 
+    /**
+     * Extras the leanback builds of YouTube read: without them a video that
+     * does open can come up windowed, or drop back to the app's home screen
+     * when it ends instead of returning here.
+     */
     private fun viewIntent(uri: Uri, pkg: String?) = Intent(Intent.ACTION_VIEW, uri).apply {
         if (pkg != null) setPackage(pkg)
         flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        putExtra("force_fullscreen", true)
+        putExtra("finish_on_ended", true)
     }
+
+    private fun isYoutubeApp(pkg: String) =
+        pkg in KNOWN_PLAYERS || NAME_HINTS.any { pkg.contains(it, ignoreCase = true) }
 
     private fun isInstalled(pm: PackageManager, pkg: String) = try {
         pm.getPackageInfo(pkg, 0)
@@ -142,23 +215,33 @@ object VideoLauncher {
         false
     }
 
-    /**
-     * A leanback launcher is the signal Android TV uses to decide an app
-     * belongs on a television. It is a hint about ordering only: plenty of
-     * boxes run a manufacturer launcher where no app declares it.
-     */
     private fun isTelevisionApp(pm: PackageManager, pkg: String) = try {
         pm.getLeanbackLaunchIntentForPackage(pkg) != null
     } catch (e: Exception) {
         false
     }
 
-    private fun handlersFor(context: Context, uri: Uri): List<String> = try {
-        context.packageManager
-            .queryIntentActivities(Intent(Intent.ACTION_VIEW, uri), 0)
+    /** Leanback entry point when the app has one, so the TV interface opens. */
+    private fun launchIntent(pm: PackageManager, pkg: String): Intent? = try {
+        (pm.getLeanbackLaunchIntentForPackage(pkg) ?: pm.getLaunchIntentForPackage(pkg))
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun componentsFor(pm: PackageManager, pkg: String, uri: Uri): List<ComponentName> = try {
+        pm.queryIntentActivities(Intent(Intent.ACTION_VIEW, uri).setPackage(pkg), 0)
+            .mapNotNull { it.activityInfo }
+            .filter { it.exported }
+            .map { ComponentName(it.packageName, it.name) }
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    private fun handlersFor(pm: PackageManager, uri: Uri): List<String> = try {
+        pm.queryIntentActivities(Intent(Intent.ACTION_VIEW, uri), 0)
             .map { it.activityInfo.packageName }
             .distinct()
-            .filter { it != context.packageName }
     } catch (e: Exception) {
         emptyList()
     }
