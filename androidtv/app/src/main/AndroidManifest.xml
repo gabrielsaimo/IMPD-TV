@@ -21,11 +21,21 @@
         <package android:name="com.teamsmart.videobase" />
         <package android:name="com.liskovsoft.smarttubetv" />
         <package android:name="com.liskovsoft.smarttubetv.beta" />
+        <package android:name="com.liskovsoft.videomanager" />
+        <package android:name="app.revanced.android.youtube" />
 
         <!-- Anything else that can open a video link, browser included. -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="vnd.youtube" />
         </intent>
     </queries>
 
