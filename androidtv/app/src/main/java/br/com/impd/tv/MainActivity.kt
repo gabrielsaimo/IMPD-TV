@@ -15,7 +15,6 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -58,7 +57,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var bottomDrawer: View
     private lateinit var youtubeRecyclerView: RecyclerView
+    private lateinit var youtubeAdapter: VideoAdapter
     private var isYoutubeLoaded = false
+    private var isYoutubeLoading = false
     
     // Prayer request drawer
     private lateinit var qrCodePrayer: ImageView
@@ -136,6 +137,10 @@ class MainActivity : AppCompatActivity() {
         youtubeRecyclerView = findViewById(R.id.youtube_recycler_view)
         youtubeRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         youtubeRecyclerView.setHasFixedSize(true)
+        // Attached empty from the start so the row can show that it is loading
+        // instead of opening as a blank strip with nothing in it.
+        youtubeAdapter = VideoAdapter(onRetry = { loadYoutubeVideos() })
+        youtubeRecyclerView.adapter = youtubeAdapter
         bottomDrawer.visibility = View.GONE
         
         qrCodePrayer = findViewById(R.id.qr_code_whatsapp)
@@ -389,18 +394,7 @@ class MainActivity : AppCompatActivity() {
                 } else if (!isAnyDrawerOpen) {
                     bottomDrawer.visibility = View.VISIBLE
                     youtubeRecyclerView.requestFocus()
-                    
-                    if (!isYoutubeLoaded) {
-                        YoutubeFetcher.fetchLatestVideos(
-                            onSuccess = { videos ->
-                                youtubeRecyclerView.adapter = VideoAdapter(videos)
-                                isYoutubeLoaded = true
-                            },
-                            onError = {
-                                Toast.makeText(this@MainActivity, "Erro ao carregar vídeos", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                    }
+                    if (!isYoutubeLoaded) loadYoutubeVideos()
                     true
                 } else {
                     super.onKeyDown(keyCode, event)
@@ -472,6 +466,35 @@ class MainActivity : AppCompatActivity() {
                 super.onKeyDown(keyCode, event)
             }
         }
+    }
+
+    /**
+     * The row reports its own state at the end of the list, so a failure is
+     * something the viewer can see and press again rather than a toast that
+     * disappears and leaves an empty strip behind forever.
+     */
+    private fun loadYoutubeVideos() {
+        if (isYoutubeLoading) return
+        isYoutubeLoading = true
+        youtubeAdapter.submit(emptyList(), VideoAdapter.State.LOADING)
+
+        YoutubeFetcher.fetchLatestVideos(
+            onSuccess = { videos ->
+                isYoutubeLoading = false
+                if (videos.isEmpty()) {
+                    youtubeAdapter.submit(emptyList(), VideoAdapter.State.ERROR)
+                } else {
+                    isYoutubeLoaded = true
+                    youtubeAdapter.submit(videos, VideoAdapter.State.DONE)
+                }
+                youtubeRecyclerView.requestFocus()
+            },
+            onError = {
+                isYoutubeLoading = false
+                youtubeAdapter.submit(emptyList(), VideoAdapter.State.ERROR)
+                youtubeRecyclerView.requestFocus()
+            }
+        )
     }
 
     // MARK: - Overlays

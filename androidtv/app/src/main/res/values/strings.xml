@@ -9,6 +9,14 @@
     <string name="no_network_title">Conectando à internet…</string>
     <string name="no_network_detail">Escolha a sua rede Wi-Fi na tela que abriu. A transmissão começa sozinha assim que conectar.</string>
 
+    <!-- Video row -->
+    <string name="videos_title">Últimos Vídeos e Lives</string>
+    <string name="videos_loading">Carregando vídeos…</string>
+    <string name="videos_end">Fim da lista</string>
+    <string name="videos_end_detail">Você chegou ao último vídeo</string>
+    <string name="videos_error">Não foi possível carregar</string>
+    <string name="videos_error_detail">Aperte OK para tentar de novo</string>
+
     <!-- Church info panel -->
     <string name="church_name">Igreja Mundial do Poder de Deus</string>
     <string name="church_tagline">Fé, milagres e transformação de vidas</string>
