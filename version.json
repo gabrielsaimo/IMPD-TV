@@ -1,5 +1,5 @@
 {
-  "versionCode": 8,
-  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1.7/impd-tv-1.7.apk",
-  "releaseNotes": "Vídeos do YouTube abrem direto no app do aparelho, sem a tela de escolha. Atualização automática pede a autorização de instalação antes de baixar."
+  "versionCode": 9,
+  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v1.8/impd-tv-1.8.apk",
+  "releaseNotes": "Vídeo que não abre: o app tenta o próximo player do aparelho sozinho, em vez de voltar para a tela inicial sem avisar. A lista de vídeos agora vai até o fim."
 }
