@@ -21,11 +21,15 @@ object YoutubeFetcher {
     )
 
     /**
-     * Each feed returns fifteen entries, and every tile costs a thumbnail
-     * download and decode. A weak box chokes on thirty of those at once, and
-     * nobody scrolls a television that far anyway.
+     * No cap: the row runs to the end of what the feeds carry, which is the
+     * fifteen most recent entries per channel and nothing more — that limit is
+     * YouTube's, not ours, and reaching for older videos would mean an API key.
+     *
+     * Holding every entry costs almost nothing. A tile is only expensive when
+     * it is on screen: RecyclerView keeps a handful of views alive and Coil
+     * only fetches a thumbnail as its tile scrolls into view, so a weak box
+     * pays for what the viewer actually looks at, not for the whole list.
      */
-    private const val MAX_VIDEOS = 12
 
     fun fetchLatestVideos(onSuccess: (List<YoutubeVideo>) -> Unit, onError: (Exception) -> Unit) {
         Thread {
@@ -76,9 +80,11 @@ object YoutubeFetcher {
                     connection.disconnect()
                 }
 
-                // Ordenar por data de publicação decrescente (mais novos primeiro)
+                // Ordenar por data de publicação decrescente (mais novos primeiro).
+                // O carimbo é ISO 8601, então ordenar o texto já ordena a data.
                 allVideos.sortByDescending { it.published }
-                val videos = allVideos.take(MAX_VIDEOS)
+                // Uma transmissão que sai nos dois canais viria duas vezes.
+                val videos = allVideos.distinctBy { it.id }
 
                 Handler(Looper.getMainLooper()).post {
                     onSuccess(videos)

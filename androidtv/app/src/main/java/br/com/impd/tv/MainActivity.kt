@@ -176,6 +176,9 @@ class MainActivity : AppCompatActivity() {
         isResumed = true
         registerNetworkCallback()
         initializePlayer()
+        // Coming back this fast means a video player quit on its own instead of
+        // playing; VideoLauncher moves on to the next candidate on the box.
+        VideoLauncher.onHostResumed(this)
         handler.removeCallbacks(checkForUpdates)
         handler.post(checkForUpdates)
     }
