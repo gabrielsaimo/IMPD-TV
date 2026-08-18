@@ -326,53 +326,99 @@
             android:orientation="vertical"
             android:padding="@dimen/space_3">
 
-            <!-- Um cartão só. Eram dois QR, de duas chaves que não conferiam
-                 com a que a transmissão exibe na tarja; sobrou uma chave, e
-                 dois QR idênticos lado a lado não diriam nada a ninguém. -->
+            <!-- Um QR por chave PIX. A instrução fica uma vez só, embaixo dos
+                 dois: repetida em cada cartão custaria uma linha de altura que
+                 o corpo da gaveta não tem para dar. -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/card_surface"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:padding="@dimen/space_2">
+                android:baselineAligned="false"
+                android:orientation="horizontal">
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/white"
-                    app:cardCornerRadius="@dimen/radius_sm"
-                    app:cardElevation="0dp">
-
-                    <ImageView
-                        android:id="@+id/qr_code_1"
-                        android:layout_width="@dimen/qr_pix"
-                        android:layout_height="@dimen/qr_pix"
-                        android:contentDescription="@string/pix_scan_hint"
-                        android:padding="@dimen/space_1" />
-                </androidx.cardview.widget.CardView>
-
-                <TextView
-                    android:id="@+id/pix_text_1"
-                    style="@style/Text.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_1"
-                    android:ellipsize="end"
-                    android:fontFamily="monospace"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="@dimen/space_2"
+                    android:background="@drawable/card_surface"
                     android:gravity="center"
-                    android:maxLines="1"
-                    android:textColor="@color/text_primary" />
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_2">
 
-                <TextView
-                    style="@style/Text.Caption"
-                    android:layout_width="match_parent"
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@android:color/white"
+                        app:cardCornerRadius="@dimen/radius_sm"
+                        app:cardElevation="0dp">
+
+                        <ImageView
+                            android:id="@+id/qr_code_1"
+                            android:layout_width="@dimen/qr_pix"
+                            android:layout_height="@dimen/qr_pix"
+                            android:contentDescription="@string/pix_scan_hint"
+                            android:padding="@dimen/space_1" />
+                    </androidx.cardview.widget.CardView>
+
+                    <TextView
+                        android:id="@+id/pix_text_1"
+                        style="@style/Text.Caption"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_1"
+                        android:ellipsize="end"
+                        android:fontFamily="monospace"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:textColor="@color/text_primary" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/card_surface"
                     android:gravity="center"
-                    android:maxLines="1"
-                    android:text="@string/pix_scan_hint" />
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_2">
+
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@android:color/white"
+                        app:cardCornerRadius="@dimen/radius_sm"
+                        app:cardElevation="0dp">
+
+                        <ImageView
+                            android:id="@+id/qr_code_2"
+                            android:layout_width="@dimen/qr_pix"
+                            android:layout_height="@dimen/qr_pix"
+                            android:contentDescription="@string/pix_scan_hint"
+                            android:padding="@dimen/space_1" />
+                    </androidx.cardview.widget.CardView>
+
+                    <TextView
+                        android:id="@+id/pix_text_2"
+                        style="@style/Text.Caption"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_1"
+                        android:ellipsize="end"
+                        android:fontFamily="monospace"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:textColor="@color/text_primary" />
+                </LinearLayout>
             </LinearLayout>
+
+            <TextView
+                style="@style/Text.Caption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_1"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/pix_scan_hint" />
 
             <!-- Número de conta em monoespaçado: é o que faz um número comprido
                  ser lido dígito por dígito em vez de decorado errado. -->

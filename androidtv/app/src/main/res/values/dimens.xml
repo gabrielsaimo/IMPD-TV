@@ -41,7 +41,7 @@
     <!-- 200dp deixava 5dp de folga no corpo da gaveta, e nesta tela 5dp é o
          mesmo que zero: já espremeu o número de telefone da gaveta ao lado
          até três pixels. Com 176dp sobram 29dp. -->
-    <dimen name="qr_pix">148dp</dimen>
+    <dimen name="qr_pix">144dp</dimen>
     <!-- 208dp cabia na largura e não na altura: a gaveta de oração tem
          cabeçalho, rodapé e três blocos, e o LinearLayout espremia o último,
          que é justamente o do número de telefone. -->

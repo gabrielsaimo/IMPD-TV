@@ -23,14 +23,19 @@ object Contact {
     const val PRAYER_MESSAGE = "Olá, gostaria de fazer um pedido de oração"
 
     /**
-     * Chave PIX da igreja, no mesmo lugar que o resto dos dados de contato.
+     * Chaves PIX da igreja, no mesmo lugar que o resto dos dados de contato.
      *
-     * Estava escrita dentro da MainActivity, em duas chaves que não conferiam
-     * com o que a própria transmissão exibe na tarja. Errar isto manda dinheiro
-     * de fiel para a conta errada, então mora aqui, num arquivo só de contato,
+     * Estavam escritas dentro da MainActivity, no meio da montagem de tela, e
+     * uma delas não conferia com o que a igreja usa. Errar isto manda oferta de
+     * fiel para a conta errada, então moram aqui, num arquivo só de contato,
      * onde dá para achar e conferir sem ler layout nem tela.
+     *
+     * A gaveta mostra um QR por chave, na ordem desta lista.
      */
-    const val PIX_KEY = "pixrs@impd.org.br"
+    val PIX_KEYS = listOf(
+        "pix@impd.org.br",
+        "pixrs@impd.org.br"
+    )
 
     /** "+551135773800" reads as "(11) 3577-3800" on screen. */
     fun formatBr(raw: String): String {
