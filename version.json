@@ -1,5 +1,5 @@
 {
-  "versionCode": 11,
-  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v2.0/impd-tv-2.0.apk",
-  "releaseNotes": "Corrige a tela de Wi-Fi que abria sozinha de minuto em minuto durante a transmissão. O app também está com visual novo: a transmissão deixa de sumir atrás dos painéis, dá para ver qual vídeo está selecionado, e cada painel diz onde você está e qual tecla volta."
+  "versionCode": 12,
+  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v2.1/impd-tv-2.1.apk",
+  "releaseNotes": "Corrige os dados para doação: agência 3395, conta 200048-2 e chave PIX pixrs@impd.org.br. A tela de doação agora mostra um QR maior, com a chave escrita por extenso para quem preferir digitar."
 }
