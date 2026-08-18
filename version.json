@@ -1,5 +1,5 @@
 {
   "versionCode": 12,
   "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v2.1/impd-tv-2.1.apk",
-  "releaseNotes": "Corrige os dados para doação: agência 3395, conta 200048-2 e chave PIX pixrs@impd.org.br. A tela de doação agora mostra um QR maior, com a chave escrita por extenso para quem preferir digitar."
+  "releaseNotes": "Corrige os dados para doação: agência 3395, conta 200048-2 e as chaves PIX pix@impd.org.br e pixrs@impd.org.br. Cada chave tem o seu QR Code, com o endereço escrito embaixo para quem preferir digitar no aplicativo do banco."
 }
