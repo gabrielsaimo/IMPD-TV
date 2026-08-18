@@ -50,10 +50,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusDetail: android.widget.TextView
     
     private lateinit var drawerLayout: DrawerLayout
-    private lateinit var qrCode1: ImageView
-    private lateinit var pixText1: android.widget.TextView
-    private lateinit var qrCode2: ImageView
-    private lateinit var pixText2: android.widget.TextView
+    private lateinit var qrCodePix: ImageView
+    private lateinit var pixKeyText: android.widget.TextView
 
     private lateinit var bottomDrawer: View
     private lateinit var youtubeRecyclerView: RecyclerView
@@ -142,10 +140,8 @@ class MainActivity : AppCompatActivity() {
         statusDetail = findViewById(R.id.statusDetail)
         
         drawerLayout = findViewById(R.id.drawer_layout)
-        qrCode1 = findViewById(R.id.qr_code_1)
-        pixText1 = findViewById(R.id.pix_text_1)
-        qrCode2 = findViewById(R.id.qr_code_2)
-        pixText2 = findViewById(R.id.pix_text_2)
+        qrCodePix = findViewById(R.id.qr_code_1)
+        pixKeyText = findViewById(R.id.pix_text_1)
 
         bottomDrawer = findViewById(R.id.bottom_drawer)
         videosCount = findViewById(R.id.videos_count)
@@ -240,15 +236,16 @@ class MainActivity : AppCompatActivity() {
         prayerNumber2.text = if (usesWhatsapp) "" else Contact.formatBr(Contact.PRAYER_PHONE_2)
         prayerNumber2.visibility = if (usesWhatsapp) View.GONE else View.VISIBLE
 
+        // A chave aparece escrita antes de qualquer QR terminar de ser gerado:
+        // quem for digitar no aplicativo do banco não precisa esperar desenho.
+        pixKeyText.text = Contact.PIX_KEY
+
         // Gera QR Codes assincronamente
         Thread {
-            val key1 = "pix@impd.org.br"
-            val payload1 = QrCodeUtils.generatePixPayload(key1)
-            val bitmap1 = QrCodeUtils.generateQrCodeWithIcon(this, payload1, 300, 300, R.mipmap.ic_launcher)
-
-            val key2 = "pix2@impd.org.br"
-            val payload2 = QrCodeUtils.generatePixPayload(key2)
-            val bitmap2 = QrCodeUtils.generateQrCodeWithIcon(this, payload2, 300, 300, R.mipmap.ic_launcher)
+            val pixPayload = QrCodeUtils.generatePixPayload(Contact.PIX_KEY)
+            val pixBitmap = QrCodeUtils.generateQrCodeWithIcon(
+                this, pixPayload, 300, 300, R.mipmap.ic_launcher
+            )
 
             val prayerIcon = if (usesWhatsapp) R.drawable.ic_whatsapp else R.mipmap.ic_launcher
             val bitmapPrayer = QrCodeUtils.generateQrCodeWithIcon(
@@ -256,12 +253,7 @@ class MainActivity : AppCompatActivity() {
             )
 
             handler.post {
-                if (bitmap1 != null) qrCode1.setImageBitmap(bitmap1)
-                pixText1.text = key1
-
-                if (bitmap2 != null) qrCode2.setImageBitmap(bitmap2)
-                pixText2.text = key2
-
+                if (pixBitmap != null) qrCodePix.setImageBitmap(pixBitmap)
                 if (bitmapPrayer != null) qrCodePrayer.setImageBitmap(bitmapPrayer)
             }
         }.start()

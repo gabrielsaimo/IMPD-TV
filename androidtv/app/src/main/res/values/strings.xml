@@ -16,12 +16,13 @@
     <!-- Gaveta de doação -->
     <string name="pix_eyebrow">▶ Doação</string>
     <string name="pix_title">Doar por PIX</string>
+    <string name="pix_scan_hint">Aponte a câmera do celular para doar</string>
     <string name="bank_label">Banco</string>
     <string name="bank_value">237</string>
     <string name="agency_label">Agência</string>
-    <string name="agency_value">3394</string>
+    <string name="agency_value">3395</string>
     <string name="account_label">Conta</string>
-    <string name="account_value">100.000-4</string>
+    <string name="account_value">200048-2</string>
 
     <!-- Gaveta de oração -->
     <string name="prayer_eyebrow">◀ Oração</string>
