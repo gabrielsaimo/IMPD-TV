@@ -921,10 +921,19 @@ async function configNumber(env, key, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+/**
+ * Prazo vazio ou zero significa "sem prazo", e não "não mostrar".
+ *
+ * Antes um aviso escrito e salvo sumia em silêncio se o campo de prazo tivesse
+ * ficado em zero — que é o padrão. Quem escreve um aviso quer que ele apareça;
+ * o prazo é a exceção, não o requisito.
+ */
 function noticeNow(config, now) {
   const text = (config.notice_text || "").trim();
+  if (!text) return null;
   const until = Number(config.notice_until || 0);
-  return text && until > now ? text : null;
+  if (!Number.isFinite(until) || until <= 0) return text;
+  return until > now ? text : null;
 }
 
 function authorized(request, env) {

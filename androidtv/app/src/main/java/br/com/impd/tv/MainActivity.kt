@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var overlayTop: View
+    private lateinit var noticeView: android.widget.TextView
     private lateinit var statusCard: View
     private lateinit var statusTitle: android.widget.TextView
     private lateinit var statusDetail: android.widget.TextView
@@ -77,6 +78,35 @@ class MainActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val hideBanner = Runnable { setOverlaysVisible(false) }
+
+    private val hideNotice = Runnable {
+        noticeView.visibility = View.GONE
+        // Volta a aparecer daqui a pouco, enquanto o aviso continuar no ar.
+        handler.postDelayed(showNotice, NOTICE_INTERVAL_MS)
+    }
+
+    /**
+     * O aviso da igreja entra sozinho e sai sozinho.
+     *
+     * Não vai junto da faixa AO VIVO de propósito: aquela só aparece quando
+     * alguém aperta uma tecla, e a maior parte de quem assiste nunca aperta
+     * nenhuma — o recado nunca chegaria. Também não fica permanente, porque
+     * uma tarja em cima da transmissão o dia inteiro é exatamente o que este
+     * aplicativo evita.
+     */
+    private val showNotice: Runnable = Runnable {
+        val texto = Telemetry.notice
+        if (texto.isNullOrBlank() || isAnyPanelOpen()) {
+            // Painel aberto na hora certa: tenta de novo no próximo ciclo em
+            // vez de desenhar por baixo de uma gaveta.
+            handler.postDelayed(showNotice, NOTICE_RETRY_MS)
+            return@Runnable
+        }
+        noticeView.text = texto
+        noticeView.visibility = View.VISIBLE
+        handler.removeCallbacks(hideNotice)
+        handler.postDelayed(hideNotice, NOTICE_ON_SCREEN_MS)
+    }
     private var retryCount = 0
 
     /** Last stream URL that actually loaded; used as a fallback if a re-resolve fails mid-retry. */
@@ -135,6 +165,7 @@ class MainActivity : AppCompatActivity() {
 
         playerView = findViewById(R.id.player)
         overlayTop = findViewById(R.id.overlay_top)
+        noticeView = findViewById(R.id.notice)
         statusCard = findViewById(R.id.status)
         statusTitle = findViewById(R.id.statusTitle)
         statusDetail = findViewById(R.id.statusDetail)
@@ -200,6 +231,7 @@ class MainActivity : AppCompatActivity() {
         // playing; VideoLauncher moves on to the next candidate on the box.
         VideoLauncher.onHostResumed(this)
         Telemetry.start(this)
+        scheduleNotice()
         handler.removeCallbacks(checkForUpdates)
         handler.post(checkForUpdates)
     }
@@ -263,6 +295,21 @@ class MainActivity : AppCompatActivity() {
      * Escreve as chaves na hora e desenha os QR Codes em seguida: quem for
      * digitar no aplicativo do banco não espera desenho nenhum.
      */
+    /**
+     * Reagenda o aviso. Chamado na retomada e toda vez que o painel responde:
+     * um aviso que a igreja acabou de publicar aparece em segundos, e um que
+     * ela apagou some do ciclo sem ninguém tocar na televisão.
+     */
+    private fun scheduleNotice() {
+        handler.removeCallbacks(showNotice)
+        handler.removeCallbacks(hideNotice)
+        if (Telemetry.notice.isNullOrBlank()) {
+            noticeView.visibility = View.GONE
+            return
+        }
+        handler.postDelayed(showNotice, NOTICE_FIRST_MS)
+    }
+
     private fun renderPixKeys(keys: List<String>) {
         pixKeyTexts.forEachIndexed { i, view ->
             view.text = keys.getOrNull(i) ?: ""
@@ -293,6 +340,7 @@ class MainActivity : AppCompatActivity() {
      * que está na tela por vazio: sem resposta, fica o que já estava.
      */
     private fun applyRemoteConfig() {
+        scheduleNotice()
         renderContact()
         renderPixKeys(Contact.pixKeys())
 
@@ -589,6 +637,9 @@ class MainActivity : AppCompatActivity() {
      */
     private fun setOverlaysVisible(visible: Boolean) {
         overlayTop.visibility = if (visible) View.VISIBLE else View.GONE
+        // Nada deste aplicativo é desenhado em cima de outra coisa: o aviso
+        // sai de cena no instante em que qualquer painel toma a tela.
+        if (!visible) noticeView.visibility = View.GONE
     }
 
     private fun isAnyPanelOpen() =
@@ -699,6 +750,8 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         isResumed = false
+        handler.removeCallbacks(showNotice)
+        handler.removeCallbacks(hideNotice)
         Telemetry.stop()
         unregisterNetworkCallback()
         handler.removeCallbacks(checkForUpdates)
@@ -712,5 +765,14 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000L
+
+        /** Tempo até o aviso aparecer pela primeira vez depois de ligar. */
+        private const val NOTICE_FIRST_MS = 20_000L
+        /** Quanto ele fica na tela: leitura confortável do outro lado da sala. */
+        private const val NOTICE_ON_SCREEN_MS = 15_000L
+        /** Intervalo entre uma aparição e a seguinte. */
+        private const val NOTICE_INTERVAL_MS = 8 * 60 * 1000L
+        /** Se havia painel aberto na hora, tenta de novo daqui a pouco. */
+        private const val NOTICE_RETRY_MS = 60_000L
     }
 }

@@ -119,14 +119,14 @@ object Telemetry {
             if (answer != null) {
                 heartbeatSeconds = answer.optInt("heartbeatSeconds", heartbeatSeconds)
                     .coerceIn(60, 3600)
-                regionalPixKey = answer.optString("pixKey", "").takeIf { it.isNotBlank() }
-                nationalPixKey = answer.optString("pixNational", "").takeIf { it.isNotBlank() }
-                uf = answer.optString("uf", "").takeIf { it.isNotBlank() }
-                country = answer.optString("country", "").takeIf { it.isNotBlank() }
-                notice = answer.optString("notice", "").takeIf { it.isNotBlank() }
-                prayerPhone = answer.optString("prayerPhone", "").takeIf { it.isNotBlank() }
-                prayerPhone2 = answer.optString("prayerPhone2", "").takeIf { it.isNotBlank() }
-                whatsapp = answer.optString("whatsapp", "").takeIf { it.isNotBlank() }
+                regionalPixKey = answer.text("pixKey")
+                nationalPixKey = answer.text("pixNational")
+                uf = answer.text("uf")
+                country = answer.text("country")
+                notice = answer.text("notice")
+                prayerPhone = answer.text("prayerPhone")
+                prayerPhone2 = answer.text("prayerPhone2")
+                whatsapp = answer.text("whatsapp")
 
                 // Uma lista vazia nunca substitui a de reserva: painel fora do
                 // ar não pode apagar a fileira de vídeos da televisão.
@@ -248,6 +248,21 @@ object Telemetry {
             }
             post("$BASE_URL/beat", body, readBack = false)
         }.start()
+    }
+
+
+    /**
+     * Texto de um campo, ou nulo.
+     *
+     * Não dá para usar `optString` aqui: quando o JSON traz `null` de verdade,
+     * o `optString` do Android devolve a **string** "null", com quatro letras,
+     * em vez do padrão. O aviso da igreja vem nulo na maior parte do tempo, e
+     * sem esta checagem a televisão mostraria uma tarja escrita "null" no
+     * meio do culto.
+     */
+    private fun JSONObject.text(nome: String): String? {
+        if (isNull(nome)) return null
+        return optString(nome, "").takeIf { it.isNotBlank() }
     }
 
     private fun post(url: String, body: JSONObject, readBack: Boolean): JSONObject? {

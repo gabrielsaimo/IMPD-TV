@@ -775,8 +775,8 @@ td.num,th.num{text-align:right}
     ["bank_account",      "Conta",                    "text"],
     ["heartbeat_seconds", "Batida do aparelho (seg)", "number"],
     ["banner_seconds",    "Faixa AO VIVO some em (seg)", "number"],
-    ["notice_text",       "Aviso na tela",            "text"],
-    ["notice_until",      "Aviso até (epoch, 0 = sem aviso)", "number"]
+    ["notice_text",       "Aviso na tela (aparece 15s a cada 8min)", "text"],
+    ["notice_until",      "Mostrar o aviso até (vazio = sem prazo)", "datetime"]
   ];
 
   function api(path, options){
@@ -791,6 +791,23 @@ td.num,th.num{text-align:right}
     });
   }
 
+  /** Epoch em segundos -> "2026-09-05T20:00", que é o que o seletor entende. */
+  function epochParaInput(v){
+    var n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    var d = new Date(n * 1000);
+    var p = function(x){ return String(x).padStart(2, "0"); };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+           "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  /** E de volta. Vazio vira 0, que o servidor lê como "sem prazo". */
+  function inputParaEpoch(v){
+    if (!v) return "0";
+    var t = new Date(v).getTime();
+    return Number.isFinite(t) ? String(Math.floor(t / 1000)) : "0";
+  }
+
   function flash(id, msg){
     var el = $(id); el.textContent = msg;
     setTimeout(function(){ el.textContent = ""; }, 4000);
@@ -802,9 +819,14 @@ td.num,th.num{text-align:right}
       st.config.forEach(function(c){ cfg[c.k] = c.v; });
 
       $("cfgform").innerHTML = CFG_CAMPOS.map(function(c){
-        var v = String(cfg[c[0]] == null ? "" : cfg[c[0]]).replace(/"/g, "&quot;");
+        var bruto = cfg[c[0]] == null ? "" : String(cfg[c[0]]);
+        // Ninguém na liderança da igreja vai digitar epoch. O campo é um
+        // seletor de data e hora, e a conversão acontece aqui.
+        var tipo = c[2] === "datetime" ? "datetime-local" : c[2];
+        var v = c[2] === "datetime" ? epochParaInput(bruto) : bruto;
         return '<div class="field"><label for="cfg_' + c[0] + '">' + c[1] + '</label>' +
-               '<input id="cfg_' + c[0] + '" data-k="' + c[0] + '" type="' + c[2] + '" value="' + v + '"></div>';
+               '<input id="cfg_' + c[0] + '" data-k="' + c[0] + '" data-tipo="' + c[2] + '" type="' + tipo + '" value="' +
+               String(v).replace(/"/g, "&quot;") + '"></div>';
       }).join("");
 
       pixPorUf = {};
@@ -856,7 +878,9 @@ td.num,th.num{text-align:right}
   function ligarEditor(){
     $("salvarcfg").addEventListener("click", function(){
       var entries = Array.prototype.slice.call(document.querySelectorAll("#cfgform input"))
-        .map(function(i){ return { k: i.dataset.k, v: i.value }; });
+        .map(function(i){
+          return { k: i.dataset.k, v: i.dataset.tipo === "datetime" ? inputParaEpoch(i.value) : i.value };
+        });
       api("/admin/config", { method: "PUT", body: JSON.stringify({ entries: entries }) })
         .then(function(){ flash("cfgok", "Salvo. As televisões pegam na abertura seguinte."); })
         .catch(function(e){ flash("cfgok", e.message); });

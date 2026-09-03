@@ -148,6 +148,32 @@
 
         </LinearLayout>
 
+        <!-- Aviso da igreja.
+             Vive fora da faixa AO VIVO de propósito: aquela só aparece quando
+             alguém aperta uma tecla, e a maioria dos espectadores nunca
+             aperta nenhuma. Este entra sozinho, de tempos em tempos, e some
+             sozinho — quem está assistindo o culto vê sem precisar fazer nada
+             e sem ficar com um tarja em cima da imagem o dia inteiro. -->
+        <TextView
+            android:id="@+id/notice"
+            style="@style/Text.Body"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginStart="@dimen/space_4"
+            android:layout_marginEnd="@dimen/space_4"
+            android:layout_marginBottom="@dimen/space_6"
+            android:background="@drawable/overlay_pill"
+            android:elevation="8dp"
+            android:gravity="center"
+            android:maxLines="2"
+            android:paddingStart="@dimen/space_4"
+            android:paddingTop="@dimen/space_2"
+            android:paddingEnd="@dimen/space_4"
+            android:paddingBottom="@dimen/space_2"
+            android:textColor="@color/text_primary"
+            android:visibility="gone" />
+
         <!-- Sintonizando / reconectando -->
         <LinearLayout
             android:id="@+id/status"
