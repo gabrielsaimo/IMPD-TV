@@ -172,6 +172,10 @@ class MainActivity : AppCompatActivity() {
 
         setupPixDrawer()
         setupChurchInfo()
+
+        // Se apresenta ao painel e recebe de volta o que a tela nao traz
+        // chumbado: a chave PIX da gerencia onde este aparelho esta.
+        Telemetry.hello(this) { applyRegionalPix() }
     }
 
     /**
@@ -195,6 +199,7 @@ class MainActivity : AppCompatActivity() {
         // Coming back this fast means a video player quit on its own instead of
         // playing; VideoLauncher moves on to the next candidate on the box.
         VideoLauncher.onHostResumed(this)
+        Telemetry.start(this)
         handler.removeCallbacks(checkForUpdates)
         handler.post(checkForUpdates)
     }
@@ -236,32 +241,53 @@ class MainActivity : AppCompatActivity() {
         prayerNumber2.text = if (usesWhatsapp) "" else Contact.formatBr(Contact.PRAYER_PHONE_2)
         prayerNumber2.visibility = if (usesWhatsapp) View.GONE else View.VISIBLE
 
-        // As chaves aparecem escritas antes de qualquer QR terminar de ser
-        // gerado: quem for digitar no aplicativo do banco não espera desenho.
-        pixKeyTexts.forEachIndexed { i, view ->
-            view.text = Contact.PIX_KEYS.getOrNull(i) ?: ""
-        }
+        // A gaveta abre com as chaves de sempre. Se o painel responder com a
+        // chave da gerência onde este aparelho está, [applyRegionalPix] troca
+        // por cima — mas nunca há um instante em que a tela esteja vazia.
+        renderPixKeys(Contact.PIX_KEYS)
 
-        // Gera QR Codes assincronamente
         Thread {
-            val pixBitmaps = Contact.PIX_KEYS.map { key ->
-                QrCodeUtils.generateQrCodeWithIcon(
-                    this, QrCodeUtils.generatePixPayload(key), 300, 300, R.mipmap.ic_launcher
-                )
-            }
-
             val prayerIcon = if (usesWhatsapp) R.drawable.ic_whatsapp else R.mipmap.ic_launcher
             val bitmapPrayer = QrCodeUtils.generateQrCodeWithIcon(
                 this, Contact.prayerQrPayload(), 300, 300, prayerIcon
             )
+            handler.post { if (bitmapPrayer != null) qrCodePrayer.setImageBitmap(bitmapPrayer) }
+        }.start()
+    }
 
+    /**
+     * Escreve as chaves na hora e desenha os QR Codes em seguida: quem for
+     * digitar no aplicativo do banco não espera desenho nenhum.
+     */
+    private fun renderPixKeys(keys: List<String>) {
+        pixKeyTexts.forEachIndexed { i, view ->
+            view.text = keys.getOrNull(i) ?: ""
+        }
+        Thread {
+            val bitmaps = keys.map { key ->
+                QrCodeUtils.generateQrCodeWithIcon(
+                    this, QrCodeUtils.generatePixPayload(key), 300, 300, R.mipmap.ic_launcher
+                )
+            }
             handler.post {
-                pixBitmaps.forEachIndexed { i, bitmap ->
+                bitmaps.forEachIndexed { i, bitmap ->
                     if (bitmap != null) pixQrCodes.getOrNull(i)?.setImageBitmap(bitmap)
                 }
-                if (bitmapPrayer != null) qrCodePrayer.setImageBitmap(bitmapPrayer)
             }
         }.start()
+    }
+
+    /**
+     * A oferta dada em Manaus tem de entrar na conta da regional do Amazonas.
+     * A chave da gerência vem do painel, resolvida pela região da conexão, e
+     * entra como primeira da gaveta; a nacional fica ao lado como segunda,
+     * para quem preferir dar direto à sede.
+     */
+    private fun applyRegionalPix() {
+        val regional = Telemetry.regionalPixKey ?: return
+        val national = Contact.PIX_KEYS.firstOrNull() ?: return
+        val keys = if (regional == national) Contact.PIX_KEYS else listOf(regional, national)
+        renderPixKeys(keys)
     }
 
     /**
@@ -309,6 +335,7 @@ class MainActivity : AppCompatActivity() {
                     // é queda passageira, e não pode mais tirar a televisão de
                     // quem está assistindo.
                     hasEverPlayed = true
+                    Telemetry.playbackStarted()
                     hideStatus()
                     revealBanner()
                 }
@@ -318,6 +345,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onPlayerError(error: PlaybackException) {
+            Telemetry.playbackStopped()
             reconnect()
         }
     }
@@ -336,6 +364,7 @@ class MainActivity : AppCompatActivity() {
             offerWifiSettingsOnce()
         }
         retryCount++
+        Telemetry.event("reconnect", "tentativa $retryCount")
         val delay = min(1.6.pow(retryCount.toDouble()) * 1000, 15_000.0).toLong()
         handler.removeCallbacks(retryStream)
         handler.postDelayed(retryStream, delay)
@@ -363,6 +392,7 @@ class MainActivity : AppCompatActivity() {
         // transmissão no instante em que a rede volta.
         if (hasEverPlayed || hasOfferedWifiSettings) return
         hasOfferedWifiSettings = true
+        Telemetry.event("wifi_prompt")
         try {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
         } catch (e: Exception) {
@@ -411,6 +441,7 @@ class MainActivity : AppCompatActivity() {
                     handler.removeCallbacks(hideBanner)
                     bottomDrawer.visibility = View.VISIBLE
                     youtubeRecyclerView.requestFocus()
+                    Telemetry.event("open_videos")
                     if (!isYoutubeLoaded) loadYoutubeVideos()
                     true
                 } else {
@@ -457,6 +488,7 @@ class MainActivity : AppCompatActivity() {
                 } else if (!isEndDrawerOpen && !isAnyDrawerOpen) {
                     setOverlaysVisible(false)
                     handler.removeCallbacks(hideBanner)
+                    Telemetry.event("open_pix")
                     drawerLayout.openDrawer(GravityCompat.END)
                     true
                 } else {
@@ -473,6 +505,7 @@ class MainActivity : AppCompatActivity() {
                 } else if (!isStartDrawerOpen && !isAnyDrawerOpen) {
                     setOverlaysVisible(false)
                     handler.removeCallbacks(hideBanner)
+                    Telemetry.event("open_prayer")
                     drawerLayout.openDrawer(GravityCompat.START)
                     true
                 } else {
@@ -556,6 +589,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showInfoPanel() {
+        Telemetry.event("open_info")
         setOverlaysVisible(false)
         handler.removeCallbacks(hideBanner)
         infoPanel.visibility = View.VISIBLE
@@ -647,6 +681,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         isResumed = false
+        Telemetry.stop()
         unregisterNetworkCallback()
         handler.removeCallbacks(checkForUpdates)
         releasePlayer()

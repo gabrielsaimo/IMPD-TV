@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Monitor IMPD TV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Mesma paleta do portfólio e do app: o painel tem de parecer parte do produto. */
+:root{
+  color-scheme: light;
+  --paper:#EEF0F3; --surface:#FFFFFF; --surface-2:#F7F8FA;
+  --ink:#0B1017; --ink-2:#41505F; --ink-3:#5B6878;
+  --line:#D6DCE4; --line-soft:#E6EAEF;
+  --accent:#2C4E86; --accent-bright:#2A78D6; --accent-wash:#E4EDF9;
+  --screen:#05070A; --screen-line:#2A323D; --screen-ink:#FFFFFF; --screen-ink-3:#7C8797;
+  --s1:#2A78D6; --s2:#EB6834;
+  --ok:#12735A; --warn:#B26A00; --danger:#C62A27;
+  --chart-surface:#FFFFFF; --grid:#E6EAEF;
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --shadow:0 1px 2px rgba(11,16,23,.05), 0 12px 32px -18px rgba(11,16,23,.28);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --paper:#05070A; --surface:#101418; --surface-2:#0C1015;
+    --ink:#FFFFFF; --ink-2:#B3BDCC; --ink-3:#7C8797;
+    --line:#2A323D; --line-soft:#1C232B;
+    --accent:#6FA0E8; --accent-bright:#8FB8F0; --accent-wash:#152232;
+    --s1:#3987E5; --s2:#D95926;
+    --ok:#35C79A; --warn:#E0A44A; --danger:#FF6B62;
+    --chart-surface:#101418; --grid:#232B37;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 16px 40px -20px rgba(0,0,0,.8);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.02em;line-height:1.1}
+:focus-visible{outline:3px solid var(--accent-bright);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 clamp(16px,3vw,32px)}
+
+.bar{position:sticky;top:0;z-index:20;background:var(--screen);color:var(--screen-ink);border-bottom:1px solid var(--screen-line)}
+.bar__in{display:flex;align-items:center;gap:14px;height:52px;max-width:1240px;margin:0 auto;padding:0 clamp(16px,3vw,32px)}
+.bar__t{font-family:var(--display);font-weight:800;font-stretch:112%;font-size:15px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:pulse 2.4s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(198,42,39,.55)}70%{box-shadow:0 0 0 9px rgba(198,42,39,0)}100%{box-shadow:0 0 0 0 rgba(198,42,39,0)}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+.bar__meta{margin-left:auto;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--screen-ink-3);display:flex;gap:14px;align-items:center}
+.bar button{font:inherit;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;background:none;border:1px solid var(--screen-line);color:var(--screen-ink-3);border-radius:6px;padding:6px 10px;cursor:pointer}
+.bar button:hover{color:var(--screen-ink);border-color:var(--screen-ink-3)}
+
+.grid{display:grid;gap:16px;margin:24px 0}
+.cols-3{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
+.card__t{font-family:var(--display);font-weight:700;font-size:16px}
+.card__s{font-size:11.5px;color:var(--ink-3);margin-top:4px;letter-spacing:.03em}
+
+.headline{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between}
+.hero-fig{font-family:var(--display);font-weight:800;font-size:clamp(48px,7vw,76px);letter-spacing:-.04em;line-height:.95;font-variant-numeric:tabular-nums}
+.hero-fig small{display:block;font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:10px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:12px;overflow:hidden}
+.tile{background:var(--surface);padding:16px 18px}
+.tile__l{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.tile__v{font-family:var(--display);font-weight:700;font-size:25px;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.tile__d{font-size:11.5px;color:var(--ink-3);margin-top:4px}
+
+.chart{position:relative;margin-top:14px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.axis{font-family:var(--mono);font-size:11px;fill:var(--ink-3)}
+.gridline{stroke:var(--grid);stroke-width:1;shape-rendering:crispEdges}
+.dlabel{font-family:var(--mono);font-size:12px;font-weight:600;fill:var(--ink);font-variant-numeric:tabular-nums}
+.tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-118%);background:var(--screen);color:var(--screen-ink);border:1px solid var(--screen-line);border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.45;white-space:nowrap;transition:opacity .12s ease;z-index:5}
+.tip em{font-style:normal;color:var(--screen-ink-3);display:block}
+
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+td.num,th.num{text-align:right}
+.scroll-x{overflow-x:auto}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid currentColor}
+.pill--ok{color:var(--ok)} .pill--warn{color:var(--warn)} .pill--danger{color:var(--danger)}
+.meter{height:8px;border-radius:999px;background:var(--accent-wash);overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;background:var(--accent-bright);border-radius:999px}
+
+.gate{max-width:420px;margin:14vh auto;padding:28px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.gate h2{font-size:22px;font-weight:800}
+.gate p{color:var(--ink-3);font-size:12.5px;margin:10px 0 18px}
+.gate input{width:100%;font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);color:var(--ink)}
+.gate button{margin-top:12px;width:100%;font:inherit;font-weight:600;padding:11px;border:none;border-radius:9px;background:var(--accent);color:#fff;cursor:pointer}
+.err{color:var(--danger);font-size:12px;margin-top:10px;min-height:18px}
+.muted{color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar__in">
+    <span class="bar__t">Monitor IMPD TV</span>
+    <span class="dot" id="livedot" hidden></span>
+    <span class="bar__meta">
+      <span id="stamp">—</span>
+      <button type="button" id="sair" hidden>Sair</button>
+    </span>
+  </div>
+</header>
+
+<main class="wrap" id="app" hidden>
+  <section class="grid">
+    <div class="card">
+      <div class="headline">
+        <div class="hero-fig" id="agora">—<small>aparelhos assistindo agora</small></div>
+        <div class="muted" style="font-size:11.5px;text-align:right">
+          <div>Atualiza sozinho a cada 30&nbsp;segundos</div>
+          <div id="janela">—</div>
+        </div>
+      </div>
+      <div class="tiles" style="margin-top:20px">
+        <div class="tile"><div class="tile__l">Pico de hoje</div><div class="tile__v" id="pico">—</div><div class="tile__d" id="picoHora">—</div></div>
+        <div class="tile"><div class="tile__l">Tela ligada · média</div><div class="tile__v" id="tela">—</div><div class="tile__d">por aparelho, hoje</div></div>
+        <div class="tile"><div class="tile__l">Deram sinal hoje</div><div class="tile__v" id="hoje">—</div><div class="tile__d">de <span id="parque">—</span> cadastrados</div></div>
+        <div class="tile"><div class="tile__l">Quedas recuperadas</div><div class="tile__v" id="quedas">—</div><div class="tile__d">sozinhas, hoje</div></div>
+        <div class="tile"><div class="tile__l">Televisões mudas</div><div class="tile__v" id="mudas">—</div><div class="tile__d">sem sinal há 2 dias</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid cols-3">
+    <div class="card">
+      <div class="card__t">Aparelhos assistindo — hoje</div>
+      <div class="card__s">Contagem exata, hora a hora, da meia-noite até agora</div>
+      <div class="chart" id="c-audiencia"><div class="tip"></div></div>
+    </div>
+    <div class="card">
+      <div class="card__t">Tempo médio de tela ligada</div>
+      <div class="card__s">Horas por aparelho, últimos sete dias</div>
+      <div class="chart" id="c-tela"><div class="tip"></div></div>
+    </div>
+  </section>
+
+  <section class="grid cols-3">
+    <div class="card">
+      <div class="card__t">Aparelhos por gerência</div>
+      <div class="card__s">Onde as televisões estão — e qual chave PIX cada uma mostra</div>
+      <div class="chart" id="c-uf"><div class="tip"></div></div>
+    </div>
+    <div class="card">
+      <div class="card__t">O que apertaram hoje</div>
+      <div class="card__s">Painéis abertos pelo controle</div>
+      <div id="paineis"></div>
+    </div>
+  </section>
+
+  <section class="grid cols-3">
+    <div class="card">
+      <div class="card__t">Versão em campo</div>
+      <div class="card__s">Quantos já pegaram a última atualização</div>
+      <div id="versoes"></div>
+    </div>
+    <div class="card">
+      <div class="card__t">Televisões mudas</div>
+      <div class="card__s">Cadastradas, mas sem dar sinal há mais de dois dias</div>
+      <div class="scroll-x"><table><thead><tr><th>Aparelho</th><th>UF</th><th>Versão</th><th class="num">Sem sinal há</th></tr></thead><tbody id="quietas"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <div class="card__t">Chaves PIX por gerência</div>
+      <div class="card__s">Editar aqui muda a tela das televisões daquele estado — sem publicar aplicativo novo</div>
+      <div class="scroll-x"><table><thead><tr><th>UF</th><th>Chave</th><th>Gerência</th><th class="num">Aparelhos</th></tr></thead><tbody id="pix"></tbody></table></div>
+      <p class="muted" style="font-size:11.5px;margin-top:12px">Estado sem chave própria cai na chave nacional. Nenhuma televisão fica com a gaveta de doação vazia.</p>
+    </div>
+  </section>
+
+  <p class="muted" style="font-size:11.5px;margin:24px 0 40px">
+    O painel conta aparelhos, não pessoas: nenhum nome, CPF, login ou localização precisa entra neste sistema.
+    A UF vem da região aproximada da conexão e o identificador é um número que o próprio aparelho sorteia.
+  </p>
+</main>
+
+<div class="gate" id="gate">
+  <h2>Monitor IMPD TV</h2>
+  <p>Painel restrito. Informe a chave de acesso.</p>
+  <input type="password" id="token" autocomplete="current-password" placeholder="Chave de acesso">
+  <button type="button" id="entrar">Entrar</button>
+  <div class="err" id="erro"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // O painel e a API saem do mesmo Worker, então a origem é sempre a própria.
+  var API = location.origin + "/v1";
+
+  var NS = "http://www.w3.org/2000/svg";
+  var fmt = function(n){ return Number(n || 0).toLocaleString("pt-BR"); };
+  var $ = function(id){ return document.getElementById(id); };
+  function el(tag, attrs, parent){
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  function horas(seg){
+    var h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60);
+    return h + "h" + (m < 10 ? "0" + m : m);
+  }
+  function relogio(ts){
+    var d = new Date(ts * 1000);
+    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  /* ---------------- acesso ---------------- */
+  var token = null;
+  try { token = localStorage.getItem("impd_token"); } catch (e) {}
+
+  $("entrar").addEventListener("click", entrar);
+  $("token").addEventListener("keydown", function(e){ if (e.key === "Enter") entrar(); });
+  $("sair").addEventListener("click", function(){
+    try { localStorage.removeItem("impd_token"); } catch (e) {}
+    location.reload();
+  });
+
+  function entrar(){
+    var v = $("token").value.trim();
+    if (!v) return;
+    token = v;
+    carregar(true);
+  }
+
+  function abrir(){
+    $("gate").hidden = true;
+    $("app").hidden = false;
+    $("sair").hidden = false;
+    $("livedot").hidden = false;
+    try { localStorage.setItem("impd_token", token); } catch (e) {}
+  }
+
+  /* ---------------- dados ---------------- */
+  function carregar(primeira){
+    if (!token) return;
+    fetch(API + "/stats", { headers: { authorization: "Bearer " + token } })
+      .then(function(r){
+        if (r.status === 401) throw new Error("Chave de acesso não confere.");
+        if (!r.ok) throw new Error("O painel não respondeu (" + r.status + ").");
+        return r.json();
+      })
+      .then(function(d){
+        if (primeira) { abrir(); pixKeys(); }
+        pintar(d);
+      })
+      .catch(function(err){
+        if (primeira) { $("erro").textContent = err.message; token = null; }
+        else { $("stamp").textContent = "sem resposta"; }
+      });
+  }
+
+  var ultimo = null;
+
+  function pintar(d){
+    ultimo = d;
+    $("agora").firstChild.nodeValue = fmt(d.watchingNow);
+    $("pico").textContent = fmt(d.peakToday);
+    $("picoHora").textContent = d.peakAt ? "às " + relogio(d.peakAt) : "—";
+    $("parque").textContent = fmt(d.devicesTotal);
+    $("hoje").textContent = fmt(d.devicesActiveToday);
+    $("mudas").textContent = fmt(d.quiet.length);
+    $("stamp").textContent = "atualizado " + relogio(d.generatedAt);
+    $("janela").textContent = new Date(d.generatedAt * 1000)
+      .toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+
+    var quedas = d.panels.filter(function(p){ return p.type === "reconnect"; })[0];
+    $("quedas").textContent = fmt(quedas ? quedas.n : 0);
+
+    var hoje = d.week.length ? d.week[d.week.length - 1] : null;
+    $("tela").textContent = hoje ? horas(hoje.avg_seconds) : "—";
+
+    audiencia(d);
+    semana(d);
+    porUf(d);
+    paineis(d);
+    versoes(d);
+    quietas(d);
+  }
+
+  /* ---------------- gráficos ----------------
+     Desenhados na largura real do container: uma unidade do viewBox vale um
+     pixel, então o texto do eixo não encolhe junto com o desenho no celular. */
+  function responsivo(box, draw){
+    var w = 0;
+    function run(){
+      var next = Math.max(280, Math.round(box.clientWidth));
+      w = next;
+      var old = box.querySelector("svg");
+      if (old) old.remove();
+      draw(next);
+    }
+    run();
+    var t;
+    window.addEventListener("resize", function(){ clearTimeout(t); t = setTimeout(run, 160); });
+    return run;
+  }
+  function tipShow(tip, svg, box, sx, sy, html){
+    var r = svg.getBoundingClientRect(), br = box.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+    tip.innerHTML = html;
+    tip.style.left = ((r.left - br.left) + sx / vb.width * r.width) + "px";
+    tip.style.top = ((r.top - br.top) + sy / vb.height * r.height) + "px";
+    tip.style.opacity = "1";
+  }
+  function roundedTop(x, y, w, h, r){
+    r = Math.min(r, w / 2, h);
+    return "M"+x+","+(y+h)+" V"+(y+r)+" Q"+x+","+y+" "+(x+r)+","+y+
+           " H"+(x+w-r)+" Q"+(x+w)+","+y+" "+(x+w)+","+(y+r)+" V"+(y+h)+" Z";
+  }
+  function roundedRight(x, y, w, h, r){
+    r = Math.min(r, w, h / 2);
+    return "M"+x+","+y+" H"+(x+w-r)+" Q"+(x+w)+","+y+" "+(x+w)+","+(y+r)+
+           " V"+(y+h-r)+" Q"+(x+w)+","+(y+h)+" "+(x+w-r)+","+(y+h)+" H"+x+" Z";
+  }
+  function escala(max){
+    if (max <= 0) return 10;
+    var p = Math.pow(10, Math.floor(Math.log10(max)));
+    return Math.ceil(max / p * 1.15) * p;
+  }
+
+  var redraws = {};
+
+  function audiencia(d){
+    var box = $("c-audiencia"), tip = box.querySelector(".tip");
+    var pontos = [];
+    for (var h = 0; h < 24; h++) pontos.push(null);
+    d.hours.forEach(function(r){ if (r.hour >= 0 && r.hour < 24) pontos[r.hour] = r.watching; });
+    var ate = -1;
+    pontos.forEach(function(v, i){ if (v !== null) ate = i; });
+    if (ate < 0) { box.querySelectorAll("svg").forEach(function(s){ s.remove(); }); return; }
+    var serie = pontos.slice(0, ate + 1).map(function(v){ return v === null ? 0 : v; });
+
+    (redraws.aud || (redraws.aud = responsivo(box, function(W){
+      var H = Math.round(Math.max(180, Math.min(240, W * .5)));
+      var L = 48, R = 12, T = 18, B = 24, pw = W - L - R, ph = H - T - B;
+      var max = escala(Math.max.apply(null, serie));
+      var last = serie.length - 1;
+      var x = function(i){ return last ? L + i / last * pw : L + pw / 2; };
+      var y = function(v){ return T + ph - v / max * ph; };
+      var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
+        "aria-label": "Aparelhos assistindo por hora, hoje. Pico de " + fmt(Math.max.apply(null, serie)) + "." });
+      box.insertBefore(svg, tip);
+      [0, .25, .5, .75, 1].forEach(function(f){
+        var v = Math.round(max * f);
+        el("line", { class: "gridline", x1: L, x2: L + pw, y1: y(v), y2: y(v) }, svg);
+        el("text", { class: "axis", x: L - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = fmt(v);
+      });
+      // De madrugada existem poucas horas no eixo; um passo fixo de 4 deixaria
+      // uma marca só. O passo acompanha quanto dia já passou.
+      var passo = Math.max(1, Math.ceil((last + 1) / 6));
+      for (var h = 0; h <= last; h += passo) {
+        el("text", { class: "axis", x: x(h), y: H - 6, "text-anchor": "middle" }, svg)
+          .textContent = (h < 10 ? "0" + h : h) + "h";
+      }
+      // Logo depois da meia-noite existe um ponto só: uma linha entre um ponto
+      // e ele mesmo vira um traço fantasma descendo até o eixo.
+      if (last > 0) {
+        var dl = serie.map(function(v, i){ return (i ? "L" : "M") + x(i) + "," + y(v); }).join(" ");
+        el("path", { d: dl + " L" + x(last) + "," + y(0) + " L" + x(0) + "," + y(0) + " Z", fill: "var(--s1)", opacity: ".10" }, svg);
+        el("path", { d: dl, fill: "none", stroke: "var(--s1)", "stroke-width": "2", "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      }
+      var pk = serie.indexOf(Math.max.apply(null, serie));
+      el("circle", { cx: x(pk), cy: y(serie[pk]), r: 5, fill: "var(--s1)", stroke: "var(--chart-surface)", "stroke-width": "2" }, svg);
+      // Encostado na borda, um rótulo centralizado cai por cima do eixo.
+      var anchor = pk === 0 ? "start" : (pk === last ? "end" : "middle");
+      el("text", { class: "dlabel", x: x(pk) + (pk === 0 ? 8 : (pk === last ? -8 : 0)),
+                   y: y(serie[pk]) - 13, "text-anchor": anchor }, svg).textContent = fmt(serie[pk]);
+
+      var cross = el("line", { x1: 0, x2: 0, y1: T, y2: T + ph, stroke: "var(--ink-3)", "stroke-width": "1", opacity: "0", "shape-rendering": "crispEdges" }, svg);
+      var hit = el("rect", { x: L, y: T, width: pw, height: ph, fill: "transparent", style: "cursor:crosshair" }, svg);
+      hit.addEventListener("mousemove", function(ev){
+        var r = svg.getBoundingClientRect();
+        var sx = (ev.clientX - r.left) / r.width * W;
+        var i = Math.max(0, Math.min(last, Math.round((sx - L) / pw * last)));
+        cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", ".35");
+        tipShow(tip, svg, box, x(i), y(serie[i]),
+          "<b>" + fmt(serie[i]) + " aparelhos</b><em>" + (i < 10 ? "0" + i : i) + "h</em>");
+      });
+      hit.addEventListener("mouseleave", function(){ tip.style.opacity = "0"; cross.setAttribute("opacity", "0"); });
+    })))();
+  }
+
+  function semana(d){
+    var box = $("c-tela"), tip = box.querySelector(".tip");
+    var dias = d.week.slice(-7);
+    if (!dias.length) return;
+    (redraws.sem || (redraws.sem = responsivo(box, function(W){
+      var H = Math.round(Math.max(180, Math.min(240, W * .5)));
+      var L = 34, R = 12, T = 18, B = 24, pw = W - L - R, ph = H - T - B;
+      var maxH = Math.max(2, Math.ceil(Math.max.apply(null, dias.map(function(r){ return r.avg_seconds / 3600; }))));
+      var band = pw / dias.length, bw = Math.min(24, band * .46);
+      var y = function(v){ return T + ph - v / maxH * ph; };
+      var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
+        "aria-label": "Tempo médio de tela ligada por dia, últimos sete dias." });
+      box.insertBefore(svg, tip);
+      for (var t = 0; t <= maxH; t += Math.max(1, Math.round(maxH / 4))) {
+        el("line", { class: "gridline", x1: L, x2: L + pw, y1: y(t), y2: y(t) }, svg);
+        el("text", { class: "axis", x: L - 8, y: y(t) + 4, "text-anchor": "end" }, svg).textContent = t + "h";
+      }
+      var pico = dias.reduce(function(a, b){ return b.avg_seconds > a.avg_seconds ? b : a; });
+      dias.forEach(function(r, i){
+        var v = r.avg_seconds / 3600, cx = L + band * i + band / 2, top = y(v);
+        el("path", { d: roundedTop(cx - bw / 2, top, bw, T + ph - top, 4), fill: "var(--s2)" }, svg);
+        var dia = new Date(r.day + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+        el("text", { class: "axis", x: cx, y: H - 6, "text-anchor": "middle" }, svg).textContent = dia;
+        if (r === pico) el("text", { class: "dlabel", x: cx, y: top - 9, "text-anchor": "middle" }, svg).textContent = horas(r.avg_seconds);
+        var hit = el("rect", { x: L + band * i, y: T, width: band, height: ph, fill: "transparent" }, svg);
+        hit.addEventListener("mouseenter", function(){
+          tipShow(tip, svg, box, cx, top, "<b>" + horas(r.avg_seconds) + "</b><em>" + r.day + " · " + fmt(r.devices) + " aparelhos</em>");
+        });
+        hit.addEventListener("mouseleave", function(){ tip.style.opacity = "0"; });
+      });
+    })))();
+  }
+
+  function porUf(d){
+    var box = $("c-uf"), tip = box.querySelector(".tip");
+    var top = d.byUf.slice(0, 10);
+    if (!top.length) return;
+    (redraws.uf || (redraws.uf = responsivo(box, function(W){
+      var L = 34, R = 46, T = 6, band = 30, bh = 17;
+      var H = T + band * top.length + 6, pw = W - L - R, max = top[0].devices || 1;
+      var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
+        "aria-label": "Aparelhos por unidade federativa." });
+      box.insertBefore(svg, tip);
+      top.forEach(function(r, i){
+        var yy = T + band * i + (band - bh) / 2, w = Math.max(2, r.devices / max * pw);
+        el("text", { class: "axis", x: L - 8, y: yy + bh / 2 + 4, "text-anchor": "end" }, svg).textContent = r.uf;
+        el("path", { d: roundedRight(L, yy, w, bh, 4), fill: "var(--s1)" }, svg);
+        el("text", { class: "dlabel", x: L + w + 8, y: yy + bh / 2 + 4 }, svg).textContent = fmt(r.devices);
+        var hit = el("rect", { x: L, y: T + band * i, width: pw + R - 6, height: band, fill: "transparent" }, svg);
+        hit.addEventListener("mouseenter", function(){
+          tipShow(tip, svg, box, L + w, yy, "<b>" + fmt(r.devices) + " aparelhos</b><em>" + fmt(r.watching) + " assistindo agora</em>");
+        });
+        hit.addEventListener("mouseleave", function(){ tip.style.opacity = "0"; });
+      });
+    })))();
+  }
+
+  var NOMES = {
+    open_pix: "Doação por PIX", open_prayer: "Pedidos de oração",
+    open_videos: "Últimos vídeos", open_info: "A igreja",
+    video_open: "Vídeo aberto", reconnect: "Queda recuperada",
+    wifi_prompt: "Tela de Wi-Fi", update_offered: "Atualização oferecida",
+    update_started: "Atualização baixada", update_done: "Atualização instalada"
+  };
+
+  function paineis(d){
+    var host = $("paineis");
+    var linhas = d.panels.filter(function(p){ return p.type.indexOf("open_") === 0 || p.type === "video_open"; })
+      .sort(function(a, b){ return b.n - a.n; });
+    if (!linhas.length) { host.innerHTML = '<p class="muted" style="margin-top:14px">Ninguém apertou nada ainda hoje.</p>'; return; }
+    var max = linhas[0].n;
+    host.innerHTML = linhas.map(function(p){
+      return '<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:12px">' +
+             '<span>' + (NOMES[p.type] || p.type) + '</span><b>' + fmt(p.n) + '</b></div>' +
+             '<div class="meter"><i style="width:' + Math.round(p.n / max * 100) + '%"></i></div></div>';
+    }).join("");
+  }
+
+  function versoes(d){
+    var host = $("versoes");
+    if (!d.versions.length) { host.innerHTML = '<p class="muted" style="margin-top:14px">Nenhum aparelho reportou ainda.</p>'; return; }
+    var total = d.versions.reduce(function(a, v){ return a + v.devices; }, 0);
+    var ultima = d.versions[0].version_code;
+    host.innerHTML = d.versions.map(function(v){
+      var pct = Math.round(v.devices / total * 100);
+      var atual = v.version_code === ultima;
+      return '<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center">' +
+             '<span>' + (v.version_name || "?") + ' ' +
+             (atual ? '<span class="pill pill--ok">atual</span>' : '<span class="pill pill--warn">atrasada</span>') +
+             '</span><b>' + fmt(v.devices) + ' · ' + pct + '%</b></div>' +
+             '<div class="meter"><i style="width:' + pct + '%"></i></div></div>';
+    }).join("");
+  }
+
+  function quietas(d){
+    var tb = $("quietas");
+    if (!d.quiet.length) {
+      tb.innerHTML = '<tr><td colspan="4" class="muted">Nenhuma. Todas as televisões deram sinal nas últimas 48&nbsp;horas.</td></tr>';
+      return;
+    }
+    var agora = d.generatedAt;
+    tb.innerHTML = d.quiet.map(function(r){
+      var dias = Math.floor((agora - r.last_seen) / 86400);
+      var grave = dias >= 7;
+      return '<tr><td class="muted">' + r.id.slice(0, 8) + '</td><td>' + (r.uf || "—") + '</td>' +
+             '<td>' + (r.version_name || "—") + '</td>' +
+             '<td class="num"><span class="pill ' + (grave ? "pill--danger" : "pill--warn") + '">' + dias + ' dias</span></td></tr>';
+    }).join("");
+  }
+
+  function pixKeys(){
+    Promise.all([
+      fetch(API + "/pix", { headers: { authorization: "Bearer " + token } }).then(function(r){ return r.json(); })
+    ]).then(function(res){
+      var keys = res[0].keys || [];
+      var porUf = {};
+      (ultimo ? ultimo.byUf : []).forEach(function(r){ porUf[r.uf] = r.devices; });
+      $("pix").innerHTML = keys.map(function(k){
+        return '<tr><td><b>' + k.uf + '</b></td><td>' + k.pix_key + '</td>' +
+               '<td class="muted">' + (k.label || "—") + '</td>' +
+               '<td class="num">' + fmt(porUf[k.uf] || 0) + '</td></tr>';
+      }).join("");
+    }).catch(function(){});
+  }
+
+  /* ---------------- início ---------------- */
+  if (token) carregar(true); else $("token").focus();
+  setInterval(function(){ if (token && !$("app").hidden) carregar(false); }, 30000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+name = "impd-tv-monitor"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+# Fixado de proposito: esta conta tem mais de uma, e um deploy no lugar errado
+# poe o monitoramento da igreja numa conta que nao e a dela.
+account_id = "e0f6d97a9f8f4bb1b7a8ce6a7a470b3f"
+
+# A serie de audiencia e escrita uma vez por minuto, nunca uma vez por
+# aparelho. O cron e o caminho certo; em conta gratuita ele nao existe, e o
+# proprio worker.js amostra na requisicao como plano B.
+[triggers]
+crons = ["* * * * *"]
+
+# O painel sai do proprio Worker: mesma origem que a API, entao nao existe
+# CORS no caminho. Rota que casa com arquivo vira arquivo; o resto cai no
+# Worker, que e onde /v1/* mora.
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "impd-tv"
+database_id = "f7cebab9-d610-44ef-a314-588513d60951"
+
+[vars]
+DASHBOARD_ORIGIN = "*"  # mesma origem do Worker: o painel e servido por ele
+
+# DASHBOARD_TOKEN NAO vai aqui. E segredo:
+#   wrangler secret put DASHBOARD_TOKEN
