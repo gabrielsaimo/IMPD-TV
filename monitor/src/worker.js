@@ -108,7 +108,7 @@ async function probeSources(env) {
       id: "youtube:" + c.id,
       kind: "youtube",
       label: c.name,
-      check: () => probeYoutube(c.id)
+      check: () => probeYoutube(c.id, env)
     });
   }
 
@@ -163,16 +163,32 @@ async function probeStream() {
 }
 
 /**
- * O feed público do canal. Sem parser de XML no Worker: contar `<entry>` diz
- * tudo o que precisa ser sabido — o feed respondeu e trouxe vídeo.
+ * Testa o canal pelo mesmo caminho que a fileira usa de verdade.
+ *
+ * Antes isto batia no feed RSS. Continuar batendo lá marcaria todo canal como
+ * "fora do ar" para sempre, porque aquele endpoint morreu — e o painel estaria
+ * medindo uma coisa que o aplicativo não usa mais. Um monitor que aponta para
+ * o lugar errado é pior que monitor nenhum: ensina a liderança a ignorar o
+ * alerta vermelho.
  */
-async function probeYoutube(channelId) {
-  const r = await fetch("https://www.youtube.com/feeds/videos.xml?channel_id=" + channelId);
-  if (!r.ok) return { ok: false, detail: "HTTP " + r.status, items: 0 };
-  const xml = await r.text();
-  const n = (xml.match(/<entry>/g) || []).length;
-  if (!n) return { ok: false, detail: "feed sem vídeo", items: 0 };
-  return { ok: true, detail: n + " vídeos no feed", items: n };
+async function probeYoutube(channelId, env) {
+  if (!env.YOUTUBE_API_KEY) {
+    return { ok: false, detail: "sem chave de API configurada", items: 0 };
+  }
+  const uploads = "UU" + channelId.slice(2);
+  const r = await fetch(
+    "https://www.googleapis.com/youtube/v3/playlistItems" +
+    "?part=id&maxResults=1&playlistId=" + uploads + "&key=" + env.YOUTUBE_API_KEY
+  );
+  if (!r.ok) {
+    const erro = await r.json().catch(() => ({}));
+    const msg = erro.error && erro.error.message ? erro.error.message : "";
+    return { ok: false, detail: ("HTTP " + r.status + " " + msg).slice(0, 110), items: 0 };
+  }
+  const body = await r.json();
+  const total = body.pageInfo && body.pageInfo.totalResults;
+  if (!total) return { ok: false, detail: "canal sem vídeo publicado", items: 0 };
+  return { ok: true, detail: total + " vídeos no canal", items: total };
 }
 
 /**
@@ -527,7 +543,13 @@ async function adminState(request, env) {
   return json({
     config: cfg.results || [],
     pix: pix.results || [],
-    channels: chans.results || []
+    channels: chans.results || [],
+    // Só o tamanho, nunca o valor: serve para saber se a chave chegou inteira
+    // sem colocar credencial em tela que fica aberta numa sala de reunião.
+    secrets: {
+      youtubeApiKey: (env.YOUTUBE_API_KEY || "").length,
+      dashboardToken: (env.DASHBOARD_TOKEN || "").length
+    }
   }, 200, env);
 }
 
