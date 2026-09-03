@@ -5,3 +5,4 @@ node_modules/
 .deploy.log
 .pages.log
 *.log
+youtube-key.txt
