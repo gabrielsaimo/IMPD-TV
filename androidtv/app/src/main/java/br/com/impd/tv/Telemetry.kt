@@ -2,6 +2,7 @@ package br.com.impd.tv
 
 import android.content.Context
 import android.os.Build
+import android.provider.Settings
 import android.os.Handler
 import android.os.Looper
 import org.json.JSONObject
@@ -82,20 +83,60 @@ object Telemetry {
     fun baseUrl(): String = BASE_URL
 
     /**
-     * O identificador é sorteado uma vez e guardado. Não se usa ANDROID_ID nem
-     * nada preso ao aparelho: aquilo segue a pessoa entre aplicativos, isto
-     * não sai daqui.
+     * O identificador do aparelho, e por que ele é derivado em vez de sorteado.
+     *
+     * Sorteado, ele se perdia junto com os dados do aplicativo: reinstalar,
+     * limpar dados ou trocar a caixa de lugar criava um aparelho novo na
+     * contagem. Uma televisão vira duas, depois três, e a audiência incha
+     * sozinha — número de audiência com fantasma dentro é pior que número
+     * nenhum, porque a liderança para de confiar no painel inteiro.
+     *
+     * Agora ele é o resumo criptográfico de um valor que o próprio aparelho já
+     * tem, misturado ao nome do pacote. Reinstalar devolve exatamente o mesmo
+     * identificador, e a mesma televisão continua sendo uma linha só.
+     *
+     * O valor de origem nunca sai daqui: o que viaja é o resumo, que não volta
+     * a ser o original e não serve para cruzar com nada. Se o aparelho não
+     * tiver esse valor — acontece em caixa muito antiga —, cai no sorteio de
+     * antes, que continua valendo.
      */
     private fun deviceId(context: Context): String {
         deviceId?.let { return it }
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
         var id = prefs.getString(KEY_DEVICE_ID, null)
         if (id == null) {
-            id = UUID.randomUUID().toString()
-            prefs.edit().putString(KEY_DEVICE_ID, id).apply()
+            id = derivedId(app) ?: UUID.randomUUID().toString()
+            // commit() e não apply(): apply() grava em segundo plano, e uma
+            // televisão desligada da tomada nos segundos seguintes à primeira
+            // abertura perderia o identificador e voltaria como outro aparelho.
+            prefs.edit().putString(KEY_DEVICE_ID, id).commit()
         }
         deviceId = id
         return id
+    }
+
+    /** UUID estável a partir do aparelho, sem que a origem viaje. */
+    @Suppress("HardwareIds")
+    private fun derivedId(context: Context): String? = try {
+        val semente = Settings.Secure.getString(
+            context.contentResolver, Settings.Secure.ANDROID_ID
+        )
+        // "9774d56d682e549c" é um valor conhecido por se repetir em aparelhos
+        // antigos com defeito de fábrica; aceitar ele juntaria televisões
+        // diferentes numa linha só, que é o erro oposto e igualmente ruim.
+        if (semente.isNullOrBlank() || semente == "9774d56d682e549c") {
+            null
+        } else {
+            val bytes = java.security.MessageDigest.getInstance("SHA-256")
+                .digest("${context.packageName}:$semente".toByteArray())
+            val hex = bytes.take(16).joinToString("") { "%02x".format(it) }
+            "${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-" +
+                "${hex.substring(16, 20)}-${hex.substring(20, 32)}"
+        }
+    } catch (e: Exception) {
+        null
     }
 
     /**

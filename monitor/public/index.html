@@ -241,6 +241,16 @@ td.num,th.num{text-align:right}
 
   <section class="grid">
     <div class="card">
+      <div class="card__t">O parque, aparelho por aparelho</div>
+      <div class="card__s">Uma linha por televisão. Abrir e fechar o aplicativo soma <b>aberturas</b>, nunca aparelhos — se aparecer linha repetida do mesmo aparelho, é defeito e vale avisar.</div>
+      <div class="scroll-x"><table><thead><tr><th>Aparelho</th><th>Modelo</th><th>UF</th><th>Versão</th><th class="num">Aberturas</th><th class="num">Tela ligada</th><th class="num">Visto</th><th></th></tr></thead><tbody id="parque"></tbody></table></div>
+      <span class="saved" id="devok"></span>
+      <p class="muted" style="font-size:11.5px;margin-top:12px">Remover apaga o aparelho e tudo que ele reportou. Use para caixa devolvida, aparelho de teste ou televisão trocada — número de audiência com lixo dentro é pior que número nenhum.</p>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
       <div class="card__t">Configuração do aplicativo</div>
       <div class="card__s">O que está aqui manda na tela das televisões. Elas pegam na abertura seguinte — sem aplicativo novo.</div>
       <div class="form" id="cfgform"></div>
@@ -813,6 +823,32 @@ td.num,th.num{text-align:right}
     setTimeout(function(){ el.textContent = ""; }, 4000);
   }
 
+  function carregarParque(){
+    return api("/admin/device").then(function(r){
+      var agora = Math.floor(Date.now() / 1000);
+      var d = r.devices || [];
+      if (!d.length) {
+        $("parque").innerHTML = '<tr><td colspan="8" class="muted">Nenhum aparelho reportou ainda.</td></tr>';
+        return;
+      }
+      $("parque").innerHTML = d.map(function(a){
+        var idade = agora - a.last_seen;
+        var quando = idade < 3600 ? Math.max(1, Math.round(idade / 60)) + " min"
+                   : idade < 86400 ? Math.round(idade / 3600) + " h"
+                   : Math.round(idade / 86400) + " d";
+        var tocando = (agora - a.last_playing) < 750;
+        return '<tr><td class="tdmono muted">' + a.id.slice(0, 8) + '</td>' +
+               '<td>' + (a.model || "—") + (tocando ? ' <span class="pill pill--ok">assistindo</span>' : '') + '</td>' +
+               '<td>' + (a.uf || a.country || "—") + '</td>' +
+               '<td>' + (a.version_name || "—") + '</td>' +
+               '<td class="num">' + fmt(a.sessions) + '</td>' +
+               '<td class="num">' + horas(a.screen_seconds) + '</td>' +
+               '<td class="num muted">há ' + quando + '</td>' +
+               '<td class="num"><button type="button" class="btn btn--danger" data-deldev="' + a.id + '">Remover</button></td></tr>';
+      }).join("");
+    }).catch(function(e){ flash("devok", e.message); });
+  }
+
   function carregarEditor(){
     return api("/admin/state").then(function(st){
       var cfg = {};
@@ -852,11 +888,18 @@ td.num,th.num{text-align:right}
                  (c.enabled ? "Desligar" : "Ligar") + '</button> ' +
                '<button type="button" class="btn btn--danger" data-delch="' + c.id + '">Remover</button></td></tr>';
       }).join("");
+      return carregarParque();
     }).catch(function(e){ flash("cfgok", "Não deu para carregar: " + e.message); });
   }
 
   document.addEventListener("click", function(ev){
     var t = ev.target;
+    if (t.dataset && t.dataset.deldev) {
+      if (!confirm("Remover este aparelho e tudo que ele reportou?")) return;
+      api("/admin/device?id=" + t.dataset.deldev, { method: "DELETE" })
+        .then(function(){ flash("devok", "Aparelho removido."); return carregarParque(); })
+        .catch(function(e){ flash("devok", e.message); });
+    }
     if (t.dataset && t.dataset.delpix) {
       api("/pix?uf=" + t.dataset.delpix, { method: "DELETE" })
         .then(function(){ flash("pixok", "Chave removida."); return carregarEditor(); })

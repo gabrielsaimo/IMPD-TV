@@ -53,6 +53,7 @@ export default {
         case "/v1/admin/state":   return await adminState(request, env);
         case "/v1/admin/config":  return await adminConfig(request, env);
         case "/v1/admin/channel": return await adminChannel(request, env, url);
+        case "/v1/admin/device":  return await adminDevice(request, env, url);
         default:
           return json({ error: "not_found" }, 404, env);
       }
@@ -525,6 +526,42 @@ async function pixAdmin(request, env) {
     if (uf === "BR") return json({ error: "nacional_nao_pode_sair" }, 400, env);
     if (!/^[A-Z]{2}$/.test(uf)) return json({ error: "uf" }, 400, env);
     await env.DB.prepare("DELETE FROM pix_keys WHERE uf = ?").bind(uf).run();
+    return json({ ok: true }, 200, env);
+  }
+
+  return json({ error: "method" }, 405, env);
+}
+
+/**
+ * Apagar um aparelho do parque.
+ *
+ * Serve para tirar fantasma da conta: caixa devolvida, aparelho de teste,
+ * televisão trocada. Um número de audiência com lixo dentro é pior que número
+ * nenhum — a liderança para de confiar no painel inteiro por causa de uma
+ * linha errada.
+ */
+async function adminDevice(request, env, url) {
+  if (!authorized(request, env)) return json({ error: "unauthorized" }, 401, env);
+
+  if (request.method === "GET") {
+    const rows = await env.DB.prepare(`
+      SELECT id, model, uf, country, version_name, sessions, screen_seconds,
+             first_seen, last_seen, last_playing
+        FROM devices
+       ORDER BY last_seen DESC
+       LIMIT 200
+    `).all();
+    return json({ devices: rows.results || [] }, 200, env);
+  }
+
+  if (request.method === "DELETE") {
+    const id = String(url.searchParams.get("id") || "");
+    if (!/^[0-9a-f-]{36}$/.test(id)) return json({ error: "id" }, 400, env);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM events WHERE device_id = ?").bind(id),
+      env.DB.prepare("DELETE FROM screen_day WHERE device_id = ?").bind(id),
+      env.DB.prepare("DELETE FROM devices WHERE id = ?").bind(id)
+    ]);
     return json({ ok: true }, 200, env);
   }
 
