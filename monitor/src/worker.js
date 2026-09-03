@@ -171,24 +171,23 @@ async function probeStream() {
  * o lugar errado é pior que monitor nenhum: ensina a liderança a ignorar o
  * alerta vermelho.
  */
+/**
+ * Lê o resultado da última busca de verdade, em vez de bater no YouTube de
+ * novo. Buscar por fora dobraria as requisições e provocaria o próprio 429 que
+ * o teste está medindo — o monitor viraria a causa do alarme.
+ */
 async function probeYoutube(channelId, env) {
-  if (!env.YOUTUBE_API_KEY) {
-    return { ok: false, detail: "sem chave de API configurada", items: 0 };
-  }
-  const uploads = "UU" + channelId.slice(2);
-  const r = await fetch(
-    "https://www.googleapis.com/youtube/v3/playlistItems" +
-    "?part=id&maxResults=1&playlistId=" + uploads + "&key=" + env.YOUTUBE_API_KEY
-  );
-  if (!r.ok) {
-    const erro = await r.json().catch(() => ({}));
-    const msg = erro.error && erro.error.message ? erro.error.message : "";
-    return { ok: false, detail: ("HTTP " + r.status + " " + msg).slice(0, 110), items: 0 };
-  }
-  const body = await r.json();
-  const total = body.pageInfo && body.pageInfo.totalResults;
-  if (!total) return { ok: false, detail: "canal sem vídeo publicado", items: 0 };
-  return { ok: true, detail: total + " vídeos no canal", items: total };
+  const c = await env.DB.prepare(
+    "SELECT payload, fetched_at, ok, detail FROM video_cache WHERE channel_id = ?"
+  ).bind(channelId).first();
+
+  if (!c) return { ok: false, detail: "nenhuma televisão pediu a fileira ainda", items: 0 };
+
+  const n = (() => { try { return JSON.parse(c.payload).length; } catch (e) { return 0; } })();
+  const idade = Math.floor(Date.now() / 1000) - c.fetched_at;
+
+  if (c.ok) return { ok: true, detail: n + " vídeos, lidos há " + Math.round(idade / 60) + " min", items: n };
+  return { ok: false, detail: (c.detail || "falha na leitura") + (n ? " (servindo " + n + " do cache)" : ""), items: n };
 }
 
 /**
@@ -660,15 +659,22 @@ async function videos(request, env) {
       continue;
     }
 
+    // Ler a página do canal é o caminho principal: não exige chave, não tem
+    // cota e é o que o YouTube ainda serve. A API entra só como segunda
+    // tentativa, para quem tiver chave configurada.
     let lista = null, detalhe = null;
-    if (env.YOUTUBE_API_KEY) {
+    try {
+      lista = await lerCanal(c);
+    } catch (e) {
+      detalhe = String(e && e.message || e).slice(0, 120);
+    }
+    if (!lista && env.YOUTUBE_API_KEY) {
       try {
         lista = await buscarNoYoutube(c, env.YOUTUBE_API_KEY);
+        detalhe = null;
       } catch (e) {
-        detalhe = String(e && e.message || e).slice(0, 120);
+        detalhe = (detalhe || "") + " / api: " + String(e && e.message || e).slice(0, 80);
       }
-    } else {
-      detalhe = "sem chave de API configurada";
     }
 
     if (lista) {
@@ -741,6 +747,141 @@ function rotuloData(iso) {
   const d = new Date(iso);
   if (isNaN(d)) return "";
   return d.getUTCDate() + " " + MESES[d.getUTCMonth()];
+}
+/* ------------------------------------------------------------------ */
+/* Leitura da página do canal                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Tira a lista de vídeos da própria página do canal.
+ *
+ * O feed RSS que o aplicativo usava saiu do ar — responde 404 de qualquer
+ * rede, inclusive de um navegador comum, inclusive para o canal oficial do
+ * próprio YouTube. Sem ele restam dois caminhos: chave de API, que a igreja
+ * não quer manter, ou ler a página.
+ *
+ * Ler a página é frágil, e seria inaceitável dentro do APK: cada mudança do
+ * YouTube exigiria atualizar milhares de televisões. Daqui, quebrar custa um
+ * deploy — e enquanto isso o cache de meia hora segura a fileira de pé. Por
+ * isso os dois formatos conhecidos são aceitos, e nada aqui pode lançar para
+ * fora: fileira desatualizada é ruim, fileira vazia é pior.
+ */
+const UA_NAVEGADOR =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+async function lerCanal(canal) {
+  // O YouTube limita IP de datacenter em rajada: dois canais buscados no mesmo
+  // instante rendem 429 no segundo. Uma espera curta resolve, e o cache faz o
+  // resto — basta uma leitura boa a cada meia hora.
+  let r = null;
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    if (tentativa) await new Promise(ok => setTimeout(ok, 400 * tentativa));
+    r = await fetch("https://www.youtube.com/channel/" + canal.id + "/videos", {
+      headers: { "User-Agent": UA_NAVEGADOR, "Accept-Language": "pt-BR,pt;q=0.9" }
+    });
+    if (r.ok) break;
+    if (r.status !== 429) break;
+  }
+  if (!r || !r.ok) throw new Error("HTTP " + (r ? r.status : "sem resposta"));
+
+  const html = await r.text();
+  const brutos = extrairVideos(html);
+  if (!brutos.length) throw new Error("página sem vídeo reconhecível");
+
+  return brutos.slice(0, 20).map(function (v, i) {
+    return {
+      id: v.id,
+      title: v.title,
+      // hqdefault e não maxresdefault: o segundo devolve 404 em vídeo que
+      // nunca foi enviado em alta, e a televisão mostra bloco em branco.
+      thumbnailUrl: "https://img.youtube.com/vi/" + v.id + "/hqdefault.jpg",
+      // A página dá "há 6 dias", não data exata. Vira carimbo aproximado só
+      // para ordenar entre canais; o que a televisão mostra é o texto mesmo.
+      published: new Date(Date.now() - idadeEmMs(v.when, i)).toISOString(),
+      channel: canal.name,
+      dateLabel: v.when || ""
+    };
+  });
+}
+
+const UNIDADES = [
+  [/(\d+)\s*(minuto|min)/i, 60e3],
+  [/(\d+)\s*hora/i, 3600e3],
+  [/(\d+)\s*(dia)/i, 86400e3],
+  [/(\d+)\s*(semana)/i, 7 * 86400e3],
+  [/(\d+)\s*(m[êe]s|meses)/i, 30 * 86400e3],
+  [/(\d+)\s*(ano)/i, 365 * 86400e3]
+];
+
+/** "há 6 dias" vira milissegundos. Sem texto, cai na ordem em que a página veio. */
+function idadeEmMs(texto, posicao) {
+  if (texto) {
+    for (const [re, mult] of UNIDADES) {
+      const m = texto.match(re);
+      if (m) return Number(m[1]) * mult;
+    }
+  }
+  return posicao * 60e3;
+}
+
+/** Recorta o objeto JSON que vem depois do marcador, contando chaves. */
+function extrairJsonEmbutido(html, marcador) {
+  const i = html.indexOf(marcador);
+  if (i < 0) return null;
+  let p = i + marcador.length, depth = 0, inStr = false, esc = false, ini = -1;
+  for (; p < html.length; p++) {
+    const c = html[p];
+    if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{") { if (depth === 0) ini = p; depth++; }
+    else if (c === "}") { depth--; if (depth === 0) { try { return JSON.parse(html.slice(ini, p + 1)); } catch (e) { return null; } } }
+  }
+  return null;
+}
+
+function textoDe(n) {
+  if (!n) return "";
+  if (typeof n === "string") return n;
+  if (n.content) return String(n.content);
+  if (n.simpleText) return String(n.simpleText);
+  if (Array.isArray(n.runs)) return n.runs.map(function (r) { return r.text || ""; }).join("");
+  return "";
+}
+
+/** Aceita os dois formatos: o `lockupViewModel` de hoje e o `videoRenderer` de ontem. */
+function extrairVideos(html) {
+  const data = extrairJsonEmbutido(html, "ytInitialData");
+  if (!data) return [];
+  const achados = [];
+
+  (function walk(n) {
+    if (!n || typeof n !== "object") return;
+
+    if (n.contentId && n.contentType === "LOCKUP_CONTENT_TYPE_VIDEO") {
+      const meta = n.metadata && n.metadata.lockupMetadataViewModel;
+      const titulo = meta ? textoDe(meta.title) : "";
+      let quando = "";
+      const linhas = meta && meta.metadata && meta.metadata.contentMetadataViewModel
+        && meta.metadata.contentMetadataViewModel.metadataRows;
+      if (linhas) for (const l of linhas)
+        for (const parte of (l.metadataParts || [])) {
+          const t = textoDe(parte.text);
+          if (/atr[áa]s|h[áa] /i.test(t)) quando = t;
+        }
+      if (titulo) achados.push({ id: n.contentId, title: titulo, when: quando });
+    }
+
+    if (n.videoId && n.title && !n.contentId) {
+      const t = textoDe(n.title);
+      if (t) achados.push({ id: n.videoId, title: t, when: textoDe(n.publishedTimeText) });
+    }
+
+    for (const k in n) walk(n[k]);
+  })(data);
+
+  const vistos = new Set();
+  return achados.filter(function (v) { return !vistos.has(v.id) && vistos.add(v.id); });
 }
 /* ------------------------------------------------------------------ */
 /* Apoio                                                               */
