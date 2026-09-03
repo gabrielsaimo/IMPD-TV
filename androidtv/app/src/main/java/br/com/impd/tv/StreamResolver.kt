@@ -31,12 +31,15 @@ object StreamResolver {
                 connection.setRequestProperty("Accept-language", "pt-BR")
 
                 if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                    Telemetry.sourceFailed("stream", "Transmissão ao vivo")
                     throw IllegalStateException("HTTP ${connection.responseCode}")
                 }
 
                 val body = connection.inputStream.bufferedReader().use { it.readText() }
-                val streamUrl = extractHlsUrl(body)
-                    ?: throw IllegalStateException("No HLS channel in response")
+                val streamUrl = extractHlsUrl(body) ?: run {
+                    Telemetry.sourceFailed("stream", "Transmissão ao vivo")
+                    throw IllegalStateException("No HLS channel in response")
+                }
 
                 Handler(Looper.getMainLooper()).post { onResult(streamUrl) }
             } catch (e: Exception) {

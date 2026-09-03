@@ -2,9 +2,9 @@ package br.com.impd.tv
 
 import android.os.Handler
 import android.os.Looper
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import javax.xml.parsers.DocumentBuilderFactory
 
 data class YoutubeVideo(
     val id: String,
@@ -19,10 +19,22 @@ data class YoutubeVideo(
 
 object YoutubeFetcher {
 
-    private val CHANNELS = listOf(
+    /**
+     * Lista de reserva, e só isso. As fontes de verdade vivem no painel e
+     * chegam pelo [Telemetry]: incluir um canal novo é uma linha no painel, e
+     * não um aplicativo novo em milhares de televisões.
+     *
+     * Esta cópia existe para o primeiro instante depois de ligar, antes de a
+     * consulta voltar, e para o dia em que o painel estiver fora do ar. Uma
+     * fileira vazia é pior que uma fileira desatualizada.
+     */
+    private val FALLBACK_CHANNELS = listOf(
         "UCfb8GIF7etM7HaMmBJ150qg" to "Bispo Roberto Santana",
         "UCHxVJ4kWtbDbzAwzIJ-_QpA" to "Igreja Mundial Ao Vivo"
     )
+
+    private fun channels(): List<Pair<String, String>> =
+        Telemetry.channels.takeIf { it.isNotEmpty() } ?: FALLBACK_CHANNELS
 
     /**
      * O feed traz o carimbo em ISO 8601. Formatar aqui, uma vez por vídeo, e
@@ -54,75 +66,75 @@ object YoutubeFetcher {
      * pays for what the viewer actually looks at, not for the whole list.
      */
 
+    /**
+     * Pede a fileira ao painel da igreja, e não ao YouTube.
+     *
+     * Cada televisão buscava o feed RSS por conta própria até esse endpoint do
+     * YouTube sair do ar — passou a responder 404 até para o canal oficial do
+     * próprio YouTube, e a fileira parou em todas as salas de uma vez.
+     *
+     * Com a busca do outro lado, três coisas melhoram: mil aparelhos deixam de
+     * bater no YouTube mil vezes, nenhuma credencial precisa viajar dentro do
+     * APK, e o dia em que o YouTube mudar de novo o conserto é um deploy — não
+     * uma atualização em cada televisão do país.
+     */
     fun fetchLatestVideos(onSuccess: (List<YoutubeVideo>) -> Unit, onError: (Exception) -> Unit) {
         Thread {
+            var connection: HttpURLConnection? = null
             try {
-                val allVideos = mutableListOf<YoutubeVideo>()
-                val factory = DocumentBuilderFactory.newInstance()
-                val builder = factory.newDocumentBuilder()
+                val base = Telemetry.baseUrl()
+                if (base.isBlank()) throw IllegalStateException("sem painel configurado")
 
-                for ((channelId, channelName) in CHANNELS) {
-                    val url = URL("https://www.youtube.com/feeds/videos.xml?channel_id=$channelId")
-                    val connection = url.openConnection() as HttpURLConnection
-                    connection.requestMethod = "GET"
-                    connection.connectTimeout = 10000
-                    connection.readTimeout = 10000
+                connection = (URL("$base/videos").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 10000
+                    readTimeout = 10000
+                }
+                if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                    throw IllegalStateException("HTTP ${connection.responseCode}")
+                }
 
-                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                        val document = builder.parse(connection.inputStream)
-                        val entries = document.getElementsByTagName("entry")
-                        
-                        for (i in 0 until entries.length) {
-                            val node = entries.item(i)
-                            var videoId = ""
-                            var title = ""
-                            var published = ""
-                            
-                            val childNodes = node.childNodes
-                            for (j in 0 until childNodes.length) {
-                                val child = childNodes.item(j)
-                                if (child.nodeName == "yt:videoId") {
-                                    videoId = child.textContent ?: ""
-                                }
-                                if (child.nodeName == "title") {
-                                    title = child.textContent ?: ""
-                                }
-                                if (child.nodeName == "published") {
-                                    published = child.textContent ?: ""
-                                }
-                            }
-                            
-                            if (videoId.isNotEmpty() && title.isNotEmpty()) {
-                                // hqdefault, not maxresdefault: the latter 404s for any video
-                                // that was never uploaded in HD, leaving a blank tile.
-                                val thumbnailUrl = "https://img.youtube.com/vi/$videoId/hqdefault.jpg"
-                                allVideos.add(
-                                    YoutubeVideo(
-                                        videoId, title, thumbnailUrl, published,
-                                        channelName, dateLabelFor(published)
-                                    )
-                                )
-                            }
-                        }
+                val body = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                val arr = body.optJSONArray("videos")
+                val videos = mutableListOf<YoutubeVideo>()
+                if (arr != null) {
+                    for (i in 0 until arr.length()) {
+                        val v = arr.optJSONObject(i) ?: continue
+                        val id = v.optString("id", "")
+                        val title = v.optString("title", "")
+                        if (id.isBlank() || title.isBlank()) continue
+                        videos.add(
+                            YoutubeVideo(
+                                id = id,
+                                title = title,
+                                thumbnailUrl = v.optString(
+                                    "thumbnailUrl",
+                                    "https://img.youtube.com/vi/$id/hqdefault.jpg"
+                                ),
+                                published = v.optString("published", ""),
+                                channel = v.optString("channel", ""),
+                                dateLabel = v.optString("dateLabel", "")
+                            )
+                        )
                     }
-                    connection.disconnect()
                 }
 
-                // Ordenar por data de publicação decrescente (mais novos primeiro).
-                // O carimbo é ISO 8601, então ordenar o texto já ordena a data.
-                allVideos.sortByDescending { it.published }
-                // Uma transmissão que sai nos dois canais viria duas vezes.
-                val videos = allVideos.distinctBy { it.id }
-
-                Handler(Looper.getMainLooper()).post {
-                    onSuccess(videos)
+                if (videos.isEmpty()) {
+                    Telemetry.sourceFailed(
+                        "videos",
+                        body.optString("reason", "").takeIf { it.isNotBlank() } ?: "lista vazia"
+                    )
                 }
+
+                Handler(Looper.getMainLooper()).post { onSuccess(videos) }
             } catch (e: Exception) {
                 e.printStackTrace()
-                Handler(Looper.getMainLooper()).post {
-                    onError(e)
-                }
+                Telemetry.sourceFailed("videos", "fileira de vídeos")
+                Handler(Looper.getMainLooper()).post { onError(e) }
+            } finally {
+                connection?.disconnect()
             }
         }.start()
     }
+
 }

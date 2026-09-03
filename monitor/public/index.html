@@ -20,6 +20,7 @@
   --s1:#2A78D6; --s2:#EB6834;
   --ok:#12735A; --warn:#B26A00; --danger:#C62A27;
   --chart-surface:#FFFFFF; --grid:#E6EAEF;
+  --ramp-1:#CDE2FB; --ramp-2:#9EC5F4; --ramp-3:#6DA7EC; --ramp-4:#3987E5; --ramp-5:#256ABF; --ramp-6:#104281;
   --display:'Archivo','Helvetica Neue',Arial,sans-serif;
   --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
   --shadow:0 1px 2px rgba(11,16,23,.05), 0 12px 32px -18px rgba(11,16,23,.28);
@@ -34,6 +35,7 @@
     --s1:#3987E5; --s2:#D95926;
     --ok:#35C79A; --warn:#E0A44A; --danger:#FF6B62;
     --chart-surface:#101418; --grid:#232B37;
+    --ramp-1:#12233A; --ramp-2:#184F95; --ramp-3:#256ABF; --ramp-4:#3987E5; --ramp-5:#6DA7EC; --ramp-6:#9EC5F4;
     --shadow:0 1px 2px rgba(0,0,0,.5), 0 16px 40px -20px rgba(0,0,0,.8);
   }
 }
@@ -86,6 +88,40 @@ td.num,th.num{text-align:right}
 .pill--ok{color:var(--ok)} .pill--warn{color:var(--warn)} .pill--danger{color:var(--danger)}
 .meter{height:8px;border-radius:999px;background:var(--accent-wash);overflow:hidden;margin-top:6px}
 .meter i{display:block;height:100%;background:var(--accent-bright);border-radius:999px}
+
+/* mapa de estados */
+.ufgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:430px;margin-top:14px}
+.uf{aspect-ratio:1;border-radius:6px;border:1px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;padding:0;transition:transform .14s ease,box-shadow .14s ease}
+.uf b{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.uf:hover,.uf[aria-pressed="true"]{transform:scale(1.14);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent-bright);z-index:2}
+.uf--vazio{opacity:.42;cursor:default}
+.uf--vazio:hover{transform:none;box-shadow:none}
+.ramp{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:10.5px;color:var(--ink-3);letter-spacing:.05em;text-transform:uppercase}
+.ramp__bar{display:flex;height:9px;border-radius:3px;overflow:hidden;width:120px}
+.ramp__bar i{flex:1}
+.ufdet{border-top:1px solid var(--line-soft);margin-top:16px;padding-top:14px;min-height:104px}
+.ufdet__uf{font-family:var(--display);font-weight:900;font-size:38px;line-height:1;letter-spacing:-.04em}
+.ufdet dl{margin:12px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.5px}
+.ufdet dt{color:var(--ink-3)}
+.ufdet dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+
+/* editor */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px}
+.field label{display:block;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.field input,.field select{width:100%;font:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink)}
+.field input:disabled{opacity:.55}
+.btn{font:inherit;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--primary:hover{color:#fff;opacity:.9}
+.btn--danger{color:var(--danger);border-color:var(--line)}
+.btn--danger:hover{border-color:var(--danger);color:var(--danger)}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.saved{font-size:12px;color:var(--ok)}
+.addrow{display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;margin-top:14px;align-items:end}
+.addrow--ch{grid-template-columns:1.4fr 1fr auto}
+@media (max-width:620px){.addrow,.addrow--ch{grid-template-columns:1fr}}
+.tdmono{font-family:var(--mono);word-break:break-all}
 
 .gate{max-width:420px;margin:14vh auto;padding:28px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
 .gate h2{font-size:22px;font-weight:800}
@@ -168,12 +204,77 @@ td.num,th.num{text-align:right}
     </div>
   </section>
 
+  <section class="grid cols-3">
+    <div class="card">
+      <div class="card__t">Onde estão as televisões</div>
+      <div class="card__s">Passe o mouse num estado para ver os números dele</div>
+      <div class="ufgrid" id="ufgrid" role="group" aria-label="Estados do Brasil"></div>
+      <div class="ramp">
+        <span>Menos</span>
+        <span class="ramp__bar" aria-hidden="true"><i style="background:var(--ramp-1)"></i><i style="background:var(--ramp-2)"></i><i style="background:var(--ramp-3)"></i><i style="background:var(--ramp-4)"></i><i style="background:var(--ramp-5)"></i><i style="background:var(--ramp-6)"></i></span>
+        <span>Mais aparelhos</span>
+      </div>
+      <div class="ufdet" id="ufdet" aria-live="polite"></div>
+    </div>
+
+    <div class="card">
+      <div class="card__t">Fora do Brasil</div>
+      <div class="card__s">Aparelhos que a borda localizou em outro país — a gaveta de doação deles mostra a chave nacional</div>
+      <div class="scroll-x"><table><thead><tr><th>País</th><th class="num">Aparelhos</th><th class="num">Assistindo</th></tr></thead><tbody id="abroad"></tbody></table></div>
+      <p class="muted" style="font-size:11.5px;margin-top:12px" id="semuf"></p>
+    </div>
+  </section>
+
+  <section class="grid cols-3">
+    <div class="card">
+      <div class="card__t">Vídeos abertos</div>
+      <div class="card__s">Quais pregações o fiel escolheu na fileira, e quantas vezes</div>
+      <div class="scroll-x"><table><thead><tr><th>Vídeo</th><th>Canal</th><th class="num">Aberturas</th><th class="num">Último</th></tr></thead><tbody id="videos"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="card__t">Fontes no ar</div>
+      <div class="card__s">O painel pergunta direto a cada 5 minutos, e as televisões avisam quando não conseguem ler</div>
+      <div id="fontes"></div>
+    </div>
+  </section>
+
   <section class="grid">
     <div class="card">
+      <div class="card__t">Configuração do aplicativo</div>
+      <div class="card__s">O que está aqui manda na tela das televisões. Elas pegam na abertura seguinte — sem aplicativo novo.</div>
+      <div class="form" id="cfgform"></div>
+      <div class="row-actions">
+        <button type="button" class="btn btn--primary" id="salvarcfg">Salvar configuração</button>
+        <span class="saved" id="cfgok"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid cols-3">
+    <div class="card">
       <div class="card__t">Chaves PIX por gerência</div>
-      <div class="card__s">Editar aqui muda a tela das televisões daquele estado — sem publicar aplicativo novo</div>
-      <div class="scroll-x"><table><thead><tr><th>UF</th><th>Chave</th><th>Gerência</th><th class="num">Aparelhos</th></tr></thead><tbody id="pix"></tbody></table></div>
-      <p class="muted" style="font-size:11.5px;margin-top:12px">Estado sem chave própria cai na chave nacional. Nenhuma televisão fica com a gaveta de doação vazia.</p>
+      <div class="card__s">A oferta dada naquele estado entra na conta daquela regional. Estado sem chave cai na nacional.</div>
+      <div class="scroll-x"><table><thead><tr><th>UF</th><th>Chave</th><th>Gerência</th><th class="num">Aparelhos</th><th></th></tr></thead><tbody id="pix"></tbody></table></div>
+      <div class="addrow">
+        <div class="field"><label for="pixuf">UF</label><input id="pixuf" maxlength="2" placeholder="AM"></div>
+        <div class="field"><label for="pixkey">Chave</label><input id="pixkey" placeholder="pixam@impd.org.br"></div>
+        <div class="field"><label for="pixlabel">Gerência</label><input id="pixlabel" placeholder="Gerência Amazonas"></div>
+        <button type="button" class="btn" id="addpix">Incluir</button>
+      </div>
+      <span class="saved" id="pixok"></span>
+    </div>
+
+    <div class="card">
+      <div class="card__t">Fontes de vídeo do YouTube</div>
+      <div class="card__s">Os canais que alimentam a fileira de baixo. Desligar um tira ele da televisão na abertura seguinte.</div>
+      <div class="scroll-x"><table><thead><tr><th>Canal</th><th>ID</th><th>Estado</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
+      <div class="addrow addrow--ch">
+        <div class="field"><label for="chid">ID do canal</label><input id="chid" placeholder="UCfb8GIF7etM7HaMmBJ150qg"></div>
+        <div class="field"><label for="chname">Nome</label><input id="chname" placeholder="Bispo Roberto Santana"></div>
+        <button type="button" class="btn" id="addch">Incluir</button>
+      </div>
+      <span class="saved" id="chok"></span>
     </div>
   </section>
 
@@ -181,6 +282,7 @@ td.num,th.num{text-align:right}
     O painel conta aparelhos, não pessoas: nenhum nome, CPF, login ou localização precisa entra neste sistema.
     A UF vem da região aproximada da conexão e o identificador é um número que o próprio aparelho sorteia.
   </p>
+
 </main>
 
 <div class="gate" id="gate">
@@ -200,6 +302,7 @@ td.num,th.num{text-align:right}
   var NS = "http://www.w3.org/2000/svg";
   var fmt = function(n){ return Number(n || 0).toLocaleString("pt-BR"); };
   var $ = function(id){ return document.getElementById(id); };
+  var css = function(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
   function el(tag, attrs, parent){
     var n = document.createElementNS(NS, tag);
     for (var k in attrs) n.setAttribute(k, attrs[k]);
@@ -251,8 +354,11 @@ td.num,th.num{text-align:right}
         return r.json();
       })
       .then(function(d){
-        if (primeira) { abrir(); pixKeys(); }
+        if (primeira) { abrir(); ligarEditor(); }
+        // O editor carrega depois de pintar: o mapa precisa das chaves PIX
+        // para dizer qual delas cada estado mostra.
         pintar(d);
+        if (primeira) carregarEditor().then(function(){ if (ultimo) mapa(ultimo); });
       })
       .catch(function(err){
         if (primeira) { $("erro").textContent = err.message; token = null; }
@@ -286,6 +392,10 @@ td.num,th.num{text-align:right}
     paineis(d);
     versoes(d);
     quietas(d);
+    mapa(d);
+    foraDoBrasil(d);
+    listaVideos(d);
+    fontes(d);
   }
 
   /* ---------------- gráficos ----------------
@@ -500,19 +610,281 @@ td.num,th.num{text-align:right}
     }).join("");
   }
 
-  function pixKeys(){
-    Promise.all([
-      fetch(API + "/pix", { headers: { authorization: "Bearer " + token } }).then(function(r){ return r.json(); })
-    ]).then(function(res){
-      var keys = res[0].keys || [];
-      var porUf = {};
-      (ultimo ? ultimo.byUf : []).forEach(function(r){ porUf[r.uf] = r.devices; });
-      $("pix").innerHTML = keys.map(function(k){
-        return '<tr><td><b>' + k.uf + '</b></td><td>' + k.pix_key + '</td>' +
-               '<td class="muted">' + (k.label || "—") + '</td>' +
-               '<td class="num">' + fmt(porUf[k.uf] || 0) + '</td></tr>';
+  /* ---------------- mapa de estados ----------------
+     Cartograma, não desenho geográfico: cada UF é um quadrado do mesmo
+     tamanho, na posição aproximada. Numa TV de parede lida de longe, um mapa
+     de verdade esconde Sergipe e engorda o Amazonas — aqui todo estado tem o
+     mesmo peso visual e o número cabe dentro. */
+  var UF_GRID = [
+    ["RR",3,1],["AP",5,1],
+    ["AM",2,2],["PA",4,2],["MA",5,2],["CE",6,2],["RN",7,2],
+    ["AC",1,3],["RO",2,3],["TO",4,3],["PI",5,3],["PE",6,3],["PB",7,3],
+    ["MT",3,4],["BA",5,4],["AL",6,4],["SE",7,4],
+    ["MS",3,5],["GO",4,5],["DF",5,5],["MG",6,5],["ES",7,5],
+    ["PR",4,6],["SP",5,6],["RJ",6,6],
+    ["SC",4,7],
+    ["RS",4,8]
+  ];
+  var UF_NOME = {AC:"Acre",AL:"Alagoas",AM:"Amazonas",AP:"Amapá",BA:"Bahia",CE:"Ceará",
+    DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",MG:"Minas Gerais",
+    MS:"Mato Grosso do Sul",MT:"Mato Grosso",PA:"Pará",PB:"Paraíba",PE:"Pernambuco",
+    PI:"Piauí",PR:"Paraná",RJ:"Rio de Janeiro",RN:"Rio Grande do Norte",RO:"Rondônia",
+    RR:"Roraima",RS:"Rio Grande do Sul",SC:"Santa Catarina",SE:"Sergipe",SP:"São Paulo",
+    TO:"Tocantins"};
+
+  function rampa(n, max){
+    if (!n) return "--ramp-1";
+    var f = n / (max || 1);
+    if (f <= .05) return "--ramp-2";
+    if (f <= .15) return "--ramp-3";
+    if (f <= .35) return "--ramp-4";
+    if (f <= .70) return "--ramp-5";
+    return "--ramp-6";
+  }
+  /* Branco sobre azul médio dá 2,5:1. O ponto de virada real contra o preto da
+     paleta fica em L≈0,18 — abaixo disso a tinta clara é a legível. */
+  function tintaSobre(hex){
+    var h = String(hex).replace("#","").trim();
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    if (h.length !== 6) return "#05070A";
+    var f = function(v){ v = parseInt(v,16)/255; return v <= .03928 ? v/12.92 : Math.pow((v+.055)/1.055, 2.4); };
+    var L = .2126*f(h.substr(0,2)) + .7152*f(h.substr(2,2)) + .0722*f(h.substr(4,2));
+    return L > .18 ? "#05070A" : "#FFFFFF";
+  }
+
+  var ufTiles = [];
+
+  function mapa(d){
+    var grid = $("ufgrid");
+    var porUf = {};
+    d.byUf.forEach(function(r){ porUf[r.uf] = r; });
+    var max = d.byUf.reduce(function(a,r){ return Math.max(a, r.devices); }, 0);
+
+    if (!ufTiles.length) {
+      UF_GRID.forEach(function(u){
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "uf"; b.dataset.uf = u[0];
+        b.style.gridColumn = u[1]; b.style.gridRow = u[2];
+        b.setAttribute("aria-pressed", "false");
+        b.addEventListener("mouseenter", function(){ detalheUf(u[0], porUf[u[0]]); });
+        b.addEventListener("focus", function(){ detalheUf(u[0], porUf[u[0]]); });
+        b.addEventListener("click", function(){ detalheUf(u[0], porUf[u[0]]); });
+        grid.appendChild(b); ufTiles.push(b);
+      });
+    }
+
+    ufTiles.forEach(function(b){
+      var uf = b.dataset.uf, r = porUf[uf];
+      var n = r ? r.devices : 0;
+      var bg = css(rampa(n, max));
+      b.style.background = bg;
+      b.style.color = tintaSobre(bg);
+      b.classList.toggle("uf--vazio", !n);
+      b.innerHTML = uf + (n ? "<b>" + fmt(n) + "</b>" : "");
+      b.setAttribute("aria-label", (UF_NOME[uf] || uf) + ": " + fmt(n) + " aparelhos");
+    });
+
+    // Abre no estado com mais aparelhos, que é o que alguém quer ver primeiro.
+    var top = d.byUf[0];
+    detalheUf(top ? top.uf : "SP", top);
+  }
+
+  function detalheUf(uf, r){
+    ufTiles.forEach(function(t){ t.setAttribute("aria-pressed", String(t.dataset.uf === uf)); });
+    var chave = (pixPorUf[uf] || pixPorUf.BR || {}).pix_key || "—";
+    var ger = (pixPorUf[uf] || {}).label || "cai na chave nacional";
+    $("ufdet").innerHTML =
+      '<div class="ufdet__uf">' + uf + '</div>' +
+      '<div class="muted" style="font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;margin-top:6px">' + (UF_NOME[uf] || uf) + '</div>' +
+      '<dl><dt>Aparelhos</dt><dd>' + fmt(r ? r.devices : 0) + '</dd>' +
+      '<dt>Assistindo agora</dt><dd>' + fmt(r ? r.watching : 0) + '</dd>' +
+      '<dt>Tela ligada · média</dt><dd>' + (r && r.avg_screen ? horas(r.avg_screen) : "—") + '</dd>' +
+      '<dt>Chave PIX exibida</dt><dd class="tdmono">' + chave + '</dd>' +
+      '<dt>Gerência</dt><dd>' + ger + '</dd></dl>';
+  }
+
+  var PAIS = {US:"Estados Unidos",PT:"Portugal",JP:"Japão",PY:"Paraguai",AR:"Argentina",
+    UY:"Uruguai",BO:"Bolívia",GB:"Reino Unido",ES:"Espanha",IT:"Itália",FR:"França",
+    DE:"Alemanha",CA:"Canadá",MX:"México",AO:"Angola",MZ:"Moçambique",CH:"Suíça",
+    IE:"Irlanda",AU:"Austrália",CL:"Chile",CO:"Colômbia","??":"Não identificado"};
+
+  function foraDoBrasil(d){
+    var tb = $("abroad");
+    if (!d.abroad.length) {
+      tb.innerHTML = '<tr><td colspan="3" class="muted">Nenhum aparelho fora do Brasil até agora.</td></tr>';
+    } else {
+      tb.innerHTML = d.abroad.map(function(r){
+        return '<tr><td>' + (PAIS[r.country] || r.country) + ' <span class="muted">' + r.country + '</span></td>' +
+               '<td class="num">' + fmt(r.devices) + '</td><td class="num">' + fmt(r.watching) + '</td></tr>';
       }).join("");
-    }).catch(function(){});
+    }
+    $("semuf").textContent = d.withoutUf
+      ? fmt(d.withoutUf) + " aparelho(s) no Brasil sem estado resolvido — mostram a chave nacional."
+      : "";
+  }
+
+  function listaVideos(d){
+    var tb = $("videos");
+    if (!d.videos.length) {
+      tb.innerHTML = '<tr><td colspan="4" class="muted">Nenhum vídeo aberto ainda.</td></tr>';
+      return;
+    }
+    tb.innerHTML = d.videos.map(function(v){
+      var quando = new Date(v.last_opened * 1000).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+      var titulo = v.title || v.id;
+      return '<tr><td><a href="https://www.youtube.com/watch?v=' + v.id + '" target="_blank" rel="noopener">' +
+             titulo + '</a></td><td class="muted">' + (v.channel || "—") + '</td>' +
+             '<td class="num"><b>' + fmt(v.opens) + '</b></td><td class="num muted">' + quando + '</td></tr>';
+    }).join("");
+  }
+
+  function fontes(d){
+    var host = $("fontes");
+    if (!d.sources.length) {
+      host.innerHTML = '<p class="muted" style="margin-top:14px">O painel ainda não checou nenhuma fonte. A primeira verificação roda em até 5 minutos.</p>';
+      return;
+    }
+    host.innerHTML = d.sources.map(function(f){
+      var pill = f.ok === 1 ? '<span class="pill pill--ok">no ar</span>'
+               : f.ok === 0 ? '<span class="pill pill--danger">fora do ar</span>'
+               : '<span class="pill pill--warn">nunca checado</span>';
+      var quando = f.checked_at
+        ? "checado " + new Date(f.checked_at * 1000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+        : "";
+      var reclam = f.device_fails
+        ? '<div style="font-size:11.5px;color:var(--warn);margin-top:4px">' + fmt(f.device_fails) +
+          ' televisão(ões) não conseguiram ler esta fonte</div>' : "";
+      return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">' +
+             '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">' +
+             '<span>' + (f.label || f.id) + '</span>' + pill + '</div>' +
+             '<div class="muted" style="font-size:11.5px;margin-top:4px">' +
+             (f.detail || "—") + (quando ? " · " + quando : "") + '</div>' + reclam + '</div>';
+    }).join("");
+  }
+
+  /* ---------------- editor ---------------- */
+  var pixPorUf = {};
+  var CFG_CAMPOS = [
+    ["channel_name",      "Nome do canal",            "text"],
+    ["pix_national",      "Chave PIX nacional",       "text"],
+    ["prayer_phone",      "Central de oração",        "text"],
+    ["prayer_phone_2",    "Segunda linha",            "text"],
+    ["whatsapp",          "WhatsApp (vazio = usar telefone)", "text"],
+    ["bank_name",         "Banco",                    "text"],
+    ["bank_agency",       "Agência",                  "text"],
+    ["bank_account",      "Conta",                    "text"],
+    ["heartbeat_seconds", "Batida do aparelho (seg)", "number"],
+    ["banner_seconds",    "Faixa AO VIVO some em (seg)", "number"],
+    ["notice_text",       "Aviso na tela",            "text"],
+    ["notice_until",      "Aviso até (epoch, 0 = sem aviso)", "number"]
+  ];
+
+  function api(path, options){
+    options = options || {};
+    options.headers = Object.assign({ authorization: "Bearer " + token }, options.headers || {});
+    if (options.body) options.headers["content-type"] = "application/json";
+    return fetch(API + path, options).then(function(r){
+      if (!r.ok) return r.json().catch(function(){ return {}; }).then(function(e){
+        throw new Error(e.error || ("HTTP " + r.status));
+      });
+      return r.json();
+    });
+  }
+
+  function flash(id, msg){
+    var el = $(id); el.textContent = msg;
+    setTimeout(function(){ el.textContent = ""; }, 4000);
+  }
+
+  function carregarEditor(){
+    return api("/admin/state").then(function(st){
+      var cfg = {};
+      st.config.forEach(function(c){ cfg[c.k] = c.v; });
+
+      $("cfgform").innerHTML = CFG_CAMPOS.map(function(c){
+        var v = String(cfg[c[0]] == null ? "" : cfg[c[0]]).replace(/"/g, "&quot;");
+        return '<div class="field"><label for="cfg_' + c[0] + '">' + c[1] + '</label>' +
+               '<input id="cfg_' + c[0] + '" data-k="' + c[0] + '" type="' + c[2] + '" value="' + v + '"></div>';
+      }).join("");
+
+      pixPorUf = {};
+      st.pix.forEach(function(k){ pixPorUf[k.uf] = k; });
+      var contagem = {};
+      (ultimo ? ultimo.byUf : []).forEach(function(r){ contagem[r.uf] = r.devices; });
+      $("pix").innerHTML = st.pix.map(function(k){
+        var nacional = k.uf === "BR";
+        return '<tr><td><b>' + k.uf + '</b></td><td class="tdmono">' + k.pix_key + '</td>' +
+               '<td class="muted">' + (k.label || "—") + '</td>' +
+               '<td class="num">' + fmt(contagem[k.uf] || 0) + '</td>' +
+               '<td class="num">' + (nacional
+                 ? '<span class="muted" style="font-size:11px">obrigatória</span>'
+                 : '<button type="button" class="btn btn--danger" data-delpix="' + k.uf + '">Remover</button>') +
+               '</td></tr>';
+      }).join("");
+
+      $("canais").innerHTML = st.channels.map(function(c){
+        return '<tr><td>' + c.name + '</td><td class="tdmono muted">' + c.id + '</td>' +
+               '<td>' + (c.enabled ? '<span class="pill pill--ok">no ar</span>' : '<span class="pill pill--warn">desligado</span>') + '</td>' +
+               '<td class="num"><button type="button" class="btn" data-togch="' + c.id + '" data-name="' +
+                 c.name.replace(/"/g, "&quot;") + '" data-en="' + (c.enabled ? 1 : 0) + '">' +
+                 (c.enabled ? "Desligar" : "Ligar") + '</button> ' +
+               '<button type="button" class="btn btn--danger" data-delch="' + c.id + '">Remover</button></td></tr>';
+      }).join("");
+    }).catch(function(e){ flash("cfgok", "Não deu para carregar: " + e.message); });
+  }
+
+  document.addEventListener("click", function(ev){
+    var t = ev.target;
+    if (t.dataset && t.dataset.delpix) {
+      api("/pix?uf=" + t.dataset.delpix, { method: "DELETE" })
+        .then(function(){ flash("pixok", "Chave removida."); return carregarEditor(); })
+        .catch(function(e){ flash("pixok", e.message); });
+    }
+    if (t.dataset && t.dataset.delch) {
+      api("/admin/channel?id=" + t.dataset.delch, { method: "DELETE" })
+        .then(function(){ flash("chok", "Canal removido."); return carregarEditor(); })
+        .catch(function(e){ flash("chok", e.message); });
+    }
+    if (t.dataset && t.dataset.togch) {
+      api("/admin/channel", { method: "PUT", body: JSON.stringify({
+        id: t.dataset.togch, name: t.dataset.name, enabled: t.dataset.en !== "1"
+      })}).then(function(){ flash("chok", "Canal atualizado."); return carregarEditor(); })
+        .catch(function(e){ flash("chok", e.message); });
+    }
+  });
+
+  function ligarEditor(){
+    $("salvarcfg").addEventListener("click", function(){
+      var entries = Array.prototype.slice.call(document.querySelectorAll("#cfgform input"))
+        .map(function(i){ return { k: i.dataset.k, v: i.value }; });
+      api("/admin/config", { method: "PUT", body: JSON.stringify({ entries: entries }) })
+        .then(function(){ flash("cfgok", "Salvo. As televisões pegam na abertura seguinte."); })
+        .catch(function(e){ flash("cfgok", e.message); });
+    });
+
+    $("addpix").addEventListener("click", function(){
+      api("/pix", { method: "PUT", body: JSON.stringify({
+        uf: $("pixuf").value, pixKey: $("pixkey").value, label: $("pixlabel").value
+      })}).then(function(){
+        $("pixuf").value = $("pixkey").value = $("pixlabel").value = "";
+        flash("pixok", "Chave cadastrada.");
+        return carregarEditor();
+      }).catch(function(e){ flash("pixok", e.message); });
+    });
+
+    $("addch").addEventListener("click", function(){
+      api("/admin/channel", { method: "PUT", body: JSON.stringify({
+        id: $("chid").value.trim(), name: $("chname").value.trim(), enabled: true
+      })}).then(function(){
+        $("chid").value = $("chname").value = "";
+        flash("chok", "Canal incluído. Entra na fileira na abertura seguinte.");
+        return carregarEditor();
+      }).catch(function(e){
+        flash("chok", e.message === "id_invalido"
+          ? "O ID do canal tem de começar com UC e ter 24 caracteres."
+          : e.message);
+      });
+    });
   }
 
   /* ---------------- início ---------------- */

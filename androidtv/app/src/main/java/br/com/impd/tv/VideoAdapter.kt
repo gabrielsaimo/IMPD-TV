@@ -136,7 +136,7 @@ class VideoAdapter(
         holder.title.setTextColor(titleColor(holder.itemView, focused))
 
         holder.itemView.setOnClickListener {
-            Telemetry.event("video_open", video.id)
+            Telemetry.videoOpened(video.id, video.title, video.channel)
             VideoLauncher.open(holder.itemView.context, video)
         }
     }

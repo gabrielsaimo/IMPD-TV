@@ -37,6 +37,37 @@ object Contact {
         "pixrs@impd.org.br"
     )
 
+    /*
+     * Daqui para baixo: o painel manda, o APK guarda cópia de reserva.
+     *
+     * Trocar a Central de Oração ou uma chave PIX era publicar aplicativo novo
+     * e esperar milhares de televisões atualizarem. Agora é uma linha no
+     * painel. As constantes acima continuam valendo para o primeiro instante
+     * depois de ligar e para o dia em que o painel não responder — um número
+     * desatualizado ainda atende; um campo vazio na televisão, não.
+     */
+
+    fun prayerPhone(): String = Telemetry.prayerPhone ?: PRAYER_PHONE
+
+    fun prayerPhone2(): String = Telemetry.prayerPhone2 ?: PRAYER_PHONE_2
+
+    fun whatsapp(): String? = Telemetry.whatsapp ?: WHATSAPP
+
+    /**
+     * As chaves que a gaveta mostra, na ordem: a da gerência onde o aparelho
+     * está primeiro, a nacional ao lado. Sem resposta do painel, valem as duas
+     * gravadas aqui.
+     */
+    fun pixKeys(): List<String> {
+        val nacional = Telemetry.nationalPixKey ?: PIX_KEYS.firstOrNull() ?: return PIX_KEYS
+        val regional = Telemetry.regionalPixKey
+        return when {
+            regional == null -> PIX_KEYS
+            regional == nacional -> listOf(nacional)
+            else -> listOf(regional, nacional)
+        }
+    }
+
     /** "+551135773800" reads as "(11) 3577-3800" on screen. */
     fun formatBr(raw: String): String {
         val digits = raw.filter { it.isDigit() }.removePrefix("55")
@@ -52,13 +83,13 @@ object Contact {
      * number for it, otherwise a dial-ready link to the Central de Oração.
      */
     fun prayerQrPayload(): String {
-        val whatsapp = WHATSAPP
+        val whatsapp = whatsapp()
         return if (whatsapp != null) {
             val digits = whatsapp.filter { it.isDigit() }
             val text = java.net.URLEncoder.encode(PRAYER_MESSAGE, "UTF-8")
             "https://wa.me/$digits?text=$text"
         } else {
-            "tel:$PRAYER_PHONE"
+            "tel:${prayerPhone()}"
         }
     }
 }

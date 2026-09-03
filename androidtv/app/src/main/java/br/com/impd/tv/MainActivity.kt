@@ -175,7 +175,7 @@ class MainActivity : AppCompatActivity() {
 
         // Se apresenta ao painel e recebe de volta o que a tela nao traz
         // chumbado: a chave PIX da gerencia onde este aparelho esta.
-        Telemetry.hello(this) { applyRegionalPix() }
+        Telemetry.hello(this) { applyRemoteConfig() }
     }
 
     /**
@@ -228,7 +228,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupPixDrawer() {
-        val usesWhatsapp = Contact.WHATSAPP != null
+        renderContact()
+        renderPixKeys(Contact.pixKeys())
+
+        Thread {
+            val bitmapPrayer = QrCodeUtils.generateQrCodeWithIcon(
+                this,
+                Contact.prayerQrPayload(),
+                300,
+                300,
+                if (Contact.whatsapp() != null) R.drawable.ic_whatsapp else R.mipmap.ic_launcher
+            )
+            handler.post { if (bitmapPrayer != null) qrCodePrayer.setImageBitmap(bitmapPrayer) }
+        }.start()
+    }
+
+    /** Os textos da gaveta de oração, com o que o painel mandou ou a reserva. */
+    private fun renderContact() {
+        val usesWhatsapp = Contact.whatsapp() != null
 
         // The panels read correctly before any QR code finishes rendering.
         prayerSubtitle.setText(
@@ -237,22 +254,9 @@ class MainActivity : AppCompatActivity() {
         prayerScanHint.setText(
             if (usesWhatsapp) R.string.prayer_scan_hint_whatsapp else R.string.prayer_scan_hint
         )
-        prayerNumber.text = Contact.formatBr(Contact.WHATSAPP ?: Contact.PRAYER_PHONE)
-        prayerNumber2.text = if (usesWhatsapp) "" else Contact.formatBr(Contact.PRAYER_PHONE_2)
+        prayerNumber.text = Contact.formatBr(Contact.whatsapp() ?: Contact.prayerPhone())
+        prayerNumber2.text = if (usesWhatsapp) "" else Contact.formatBr(Contact.prayerPhone2())
         prayerNumber2.visibility = if (usesWhatsapp) View.GONE else View.VISIBLE
-
-        // A gaveta abre com as chaves de sempre. Se o painel responder com a
-        // chave da gerência onde este aparelho está, [applyRegionalPix] troca
-        // por cima — mas nunca há um instante em que a tela esteja vazia.
-        renderPixKeys(Contact.PIX_KEYS)
-
-        Thread {
-            val prayerIcon = if (usesWhatsapp) R.drawable.ic_whatsapp else R.mipmap.ic_launcher
-            val bitmapPrayer = QrCodeUtils.generateQrCodeWithIcon(
-                this, Contact.prayerQrPayload(), 300, 300, prayerIcon
-            )
-            handler.post { if (bitmapPrayer != null) qrCodePrayer.setImageBitmap(bitmapPrayer) }
-        }.start()
     }
 
     /**
@@ -278,16 +282,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * A oferta dada em Manaus tem de entrar na conta da regional do Amazonas.
-     * A chave da gerência vem do painel, resolvida pela região da conexão, e
-     * entra como primeira da gaveta; a nacional fica ao lado como segunda,
-     * para quem preferir dar direto à sede.
+     * O painel respondeu: redesenha o que ele manda.
+     *
+     * A oferta dada em Manaus tem de entrar na conta da regional do Amazonas —
+     * a chave da gerência vem resolvida pela região da conexão e entra como
+     * primeira da gaveta, com a nacional ao lado para quem preferir dar direto
+     * à sede. Telefone da Central de Oração e QR de oração vêm junto.
+     *
+     * Roda na linha principal, chamada pelo [Telemetry], e nunca substitui algo
+     * que está na tela por vazio: sem resposta, fica o que já estava.
      */
-    private fun applyRegionalPix() {
-        val regional = Telemetry.regionalPixKey ?: return
-        val national = Contact.PIX_KEYS.firstOrNull() ?: return
-        val keys = if (regional == national) Contact.PIX_KEYS else listOf(regional, national)
-        renderPixKeys(keys)
+    private fun applyRemoteConfig() {
+        renderContact()
+        renderPixKeys(Contact.pixKeys())
+
+        Thread {
+            val bitmap = QrCodeUtils.generateQrCodeWithIcon(
+                this,
+                Contact.prayerQrPayload(),
+                300,
+                300,
+                if (Contact.whatsapp() != null) R.drawable.ic_whatsapp else R.mipmap.ic_launcher
+            )
+            handler.post { if (bitmap != null) qrCodePrayer.setImageBitmap(bitmap) }
+        }.start()
     }
 
     /**

@@ -48,8 +48,20 @@ object Telemetry {
     /** Configuração vinda do painel; até o primeiro [hello] valem os padrões. */
     @Volatile var heartbeatSeconds: Int = 300; private set
     @Volatile var regionalPixKey: String? = null; private set
+    @Volatile var nationalPixKey: String? = null; private set
     @Volatile var uf: String? = null; private set
+    @Volatile var country: String? = null; private set
     @Volatile var notice: String? = null; private set
+    @Volatile var prayerPhone: String? = null; private set
+    @Volatile var prayerPhone2: String? = null; private set
+    @Volatile var whatsapp: String? = null; private set
+
+    /**
+     * As fontes de vídeo da fileira de baixo. Vazio significa "o painel ainda
+     * não respondeu" — e aí vale a lista de reserva do [YoutubeFetcher], nunca
+     * uma fileira vazia na televisão.
+     */
+    @Volatile var channels: List<Pair<String, String>> = emptyList(); private set
 
     private var deviceId: String? = null
     private var playing = false
@@ -65,6 +77,9 @@ object Telemetry {
     }
 
     private fun enabled() = BASE_URL.isNotBlank()
+
+    /** Onde o painel mora. Vazio significa monitoramento desligado. */
+    fun baseUrl(): String = BASE_URL
 
     /**
      * O identificador é sorteado uma vez e guardado. Não se usa ANDROID_ID nem
@@ -105,8 +120,28 @@ object Telemetry {
                 heartbeatSeconds = answer.optInt("heartbeatSeconds", heartbeatSeconds)
                     .coerceIn(60, 3600)
                 regionalPixKey = answer.optString("pixKey", "").takeIf { it.isNotBlank() }
+                nationalPixKey = answer.optString("pixNational", "").takeIf { it.isNotBlank() }
                 uf = answer.optString("uf", "").takeIf { it.isNotBlank() }
+                country = answer.optString("country", "").takeIf { it.isNotBlank() }
                 notice = answer.optString("notice", "").takeIf { it.isNotBlank() }
+                prayerPhone = answer.optString("prayerPhone", "").takeIf { it.isNotBlank() }
+                prayerPhone2 = answer.optString("prayerPhone2", "").takeIf { it.isNotBlank() }
+                whatsapp = answer.optString("whatsapp", "").takeIf { it.isNotBlank() }
+
+                // Uma lista vazia nunca substitui a de reserva: painel fora do
+                // ar não pode apagar a fileira de vídeos da televisão.
+                val lista = mutableListOf<Pair<String, String>>()
+                val arr = answer.optJSONArray("channels")
+                if (arr != null) {
+                    for (i in 0 until arr.length()) {
+                        val c = arr.optJSONObject(i) ?: continue
+                        val id = c.optString("id", "")
+                        val nome = c.optString("name", "")
+                        if (id.isNotBlank() && nome.isNotBlank()) lista.add(id to nome)
+                    }
+                }
+                if (lista.isNotEmpty()) channels = lista
+
                 onConfig?.let { handler.post(it) }
             }
         }.start()
@@ -160,6 +195,32 @@ object Telemetry {
             }
             post("$BASE_URL/event", body, readBack = false)
         }.start()
+    }
+
+    /**
+     * Um vídeo escolhido na fileira. Vai com título e canal junto: sem isso o
+     * painel mostraria um código de onze caracteres e ninguém saberia qual
+     * pregação foi assistida.
+     */
+    fun videoOpened(id: String, title: String, channel: String) {
+        event("video_open", JSONObject().apply {
+            put("id", id)
+            put("title", title.take(160))
+            put("channel", channel.take(80))
+        }.toString())
+    }
+
+    /**
+     * A televisão avisando que não conseguiu ler uma fonte. Vale como sinal
+     * separado do teste que o painel faz por conta própria: uma fonte pode
+     * estar de pé e mesmo assim não abrir na casa do fiel, e as duas
+     * informações juntas dizem de que lado está o problema.
+     */
+    fun sourceFailed(source: String, label: String?) {
+        event("source_fail", JSONObject().apply {
+            put("source", source)
+            if (label != null) put("label", label.take(80))
+        }.toString())
     }
 
     /**
