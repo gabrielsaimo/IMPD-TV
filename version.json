@@ -1,5 +1,5 @@
 {
-  "versionCode": 13,
-  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v2.2/impd-tv-2.2.apk",
-  "releaseNotes": "A tela de doação agora mostra a chave PIX da sua região, com o QR Code já pronto e o endereço escrito embaixo para quem preferir digitar no aplicativo do banco. Quem quiser dar direto à sede continua com a chave nacional ao lado."
+  "versionCode": 14,
+  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v2.3/impd-tv-2.3.apk",
+  "releaseNotes": "Agora a igreja pode mudar os dados que aparecem na sua televisão — chave PIX da sua região, telefones da Central de Oração e a lista de vídeos — sem precisar de um aplicativo novo. As mudanças chegam sozinhas na próxima vez que a TV ligar."
 }
