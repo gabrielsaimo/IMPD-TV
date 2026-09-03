@@ -1,5 +1,5 @@
 {
-  "versionCode": 15,
-  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v2.4/impd-tv-2.4.apk",
-  "releaseNotes": "Os avisos da igreja passam a aparecer na sua televisão. Quando houver um recado — vigília, congresso, campanha — ele entra por alguns segundos e sai sozinho, sem atrapalhar o culto."
+  "versionCode": 16,
+  "apkUrl": "https://github.com/gabrielsaimo/IMPD-TV/releases/download/v2.5/impd-tv-2.5.apk",
+  "releaseNotes": "Melhorias internas na contagem de aparelhos. Nada muda na sua tela: o canal continua abrindo e tocando do mesmo jeito."
 }
