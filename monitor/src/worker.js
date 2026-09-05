@@ -561,7 +561,7 @@ async function adminDevice(request, env, url) {
 
   if (request.method === "GET") {
     const rows = await env.DB.prepare(`
-      SELECT id, model, uf, country, version_name, sessions, screen_seconds,
+      SELECT id, model, uf, country, city, version_name, sessions, screen_seconds,
              first_seen, last_seen, last_playing
         FROM devices
        ORDER BY last_seen DESC
@@ -594,11 +594,37 @@ async function adminDevice(request, env, url) {
 async function cities(request, env, url) {
   if (!authorized(request, env)) return json({ error: "unauthorized" }, 401, env);
 
-  const uf = String(url.searchParams.get("uf") || "").toUpperCase();
-  if (!/^[A-Z]{2}$/.test(uf)) return json({ error: "uf" }, 400, env);
-
   const now = Math.floor(Date.now() / 1000);
   const grace = (await configNumber(env, "heartbeat_seconds", 300)) * OFFLINE_GRACE;
+  const online = now - grace;
+  const pedido = String(url.searchParams.get("uf") || "").toUpperCase();
+
+  // Sem UF: os primeiros municípios de cada estado, que é o que cabe num
+  // rótulo de gráfico. O painel pede isso uma vez e o balãozinho responde na
+  // hora, sem uma ida à rede a cada vez que o mouse passa por uma barra.
+  if (!pedido) {
+    const rows = await env.DB.prepare(`
+      SELECT uf,
+             COALESCE(city, '(não identificada)') AS city,
+             COUNT(*) AS devices,
+             SUM(CASE WHEN last_playing > ?1 THEN 1 ELSE 0 END) AS watching
+        FROM devices
+       WHERE country = 'BR' AND uf IS NOT NULL
+       GROUP BY uf, COALESCE(city, '(não identificada)')
+       ORDER BY uf, devices DESC
+    `).bind(online).all();
+
+    const porUf = {};
+    for (const r of (rows.results || [])) {
+      (porUf[r.uf] = porUf[r.uf] || []).push({ city: r.city, devices: r.devices, watching: r.watching });
+    }
+    // Cinco por estado: o balãozinho não comporta mais que isso, e o resto
+    // continua inteiro no modal de quem quiser ver tudo.
+    for (const uf in porUf) porUf[uf] = porUf[uf].slice(0, 5);
+    return json({ byUf: porUf }, 200, env);
+  }
+
+  if (!/^[A-Z]{2}$/.test(pedido)) return json({ error: "uf" }, 400, env);
 
   const rows = await env.DB.prepare(`
     SELECT COALESCE(city, '(cidade não identificada)') AS city,
@@ -610,9 +636,9 @@ async function cities(request, env, url) {
      GROUP BY COALESCE(city, '(cidade não identificada)')
      HAVING devices > 0
      ORDER BY devices DESC, city
-  `).bind(uf, now - grace).all();
+  `).bind(pedido, online).all();
 
-  return json({ uf: uf, cities: rows.results || [] }, 200, env);
+  return json({ uf: pedido, cities: rows.results || [] }, 200, env);
 }
 
 /** Tudo que o editor do painel precisa, numa chamada só. */
