@@ -260,7 +260,7 @@ async function hello(request, env) {
     // Canal nacional aparece em toda televisão; canal de estado, só nas de lá.
     env.DB.prepare(
       "SELECT id, name, scope FROM youtube_channels WHERE enabled = 1 AND (scope = 'BR' OR scope = ?1) ORDER BY position, name"
-    ).bind(uf || "")
+    ).bind(uf || "").all()
   ]);
 
   // Tudo que a tela mostra sai daqui. O APK so guarda copia de reserva, para o
