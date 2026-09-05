@@ -48,6 +48,7 @@ export default {
         case "/v1/beat":  return await beat(request, env);
         case "/v1/event": return await event(request, env);
         case "/v1/videos": return await videos(request, env);
+        case "/v1/cities": return await cities(request, env, url);
         case "/v1/stats": return await stats(request, env, url);
         case "/v1/pix":   return await pixAdmin(request, env);
         case "/v1/admin/state":   return await adminState(request, env);
@@ -232,14 +233,16 @@ async function hello(request, env) {
   const now = Math.floor(Date.now() / 1000);
   const uf = regionOf(request);
   const country = (request.cf && request.cf.country) || null;
+  const city = cityOf(request);
 
   await env.DB.prepare(`
-    INSERT INTO devices (id, first_seen, last_seen, uf, country, version_code, version_name, model, android_sdk, sessions)
-    VALUES (?1, ?2, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1)
+    INSERT INTO devices (id, first_seen, last_seen, uf, country, city, version_code, version_name, model, android_sdk, sessions)
+    VALUES (?1, ?2, ?2, ?3, ?4, ?9, ?5, ?6, ?7, ?8, 1)
     ON CONFLICT(id) DO UPDATE SET
       last_seen    = ?2,
       uf           = COALESCE(?3, devices.uf),
       country      = COALESCE(?4, devices.country),
+      city         = COALESCE(?9, devices.city),
       version_code = ?5,
       version_name = ?6,
       model        = ?7,
@@ -248,15 +251,16 @@ async function hello(request, env) {
   `).bind(
     id, now, uf, country,
     intOrNull(body.versionCode), strOrNull(body.versionName),
-    strOrNull(body.model), intOrNull(body.androidSdk)
+    strOrNull(body.model), intOrNull(body.androidSdk), city
   ).run();
 
   const [pix, config, channels] = await Promise.all([
     pixFor(env, uf),
     configAll(env),
+    // Canal nacional aparece em toda televisão; canal de estado, só nas de lá.
     env.DB.prepare(
-      "SELECT id, name FROM youtube_channels WHERE enabled = 1 ORDER BY position, name"
-    ).all()
+      "SELECT id, name, scope FROM youtube_channels WHERE enabled = 1 AND (scope = 'BR' OR scope = ?1) ORDER BY position, name"
+    ).bind(uf || "")
   ]);
 
   // Tudo que a tela mostra sai daqui. O APK so guarda copia de reserva, para o
@@ -382,6 +386,15 @@ async function stats(request, env, url) {
   const dayStart = spMidnight(now);
   const online = now - grace;
 
+  // Hoje é hora a hora; 7 e 30 dias são dia a dia. Em todos, o valor do
+  // balde é o PICO daquele pedaço, não a média: é o número que a liderança
+  // repete em voz alta, e é o mesmo critério do cartão "pico de hoje" —
+  // misturar média e pico entre as opções faria o gráfico mentir ao trocar.
+  const range = ({ "7d": "7d", "30d": "30d" })[url.searchParams.get("range")] || "hoje";
+  const dias = range === "30d" ? 30 : range === "7d" ? 7 : 0;
+  const serieInicio = dias ? dayStart - (dias - 1) * 86400 : dayStart;
+  const balde = dias ? 86400 : 3600;
+
   const [live, today, hours, week, byUf, versions, panels, quiet, totals] = await env.DB.batch([
     env.DB.prepare("SELECT COUNT(*) AS watching FROM devices WHERE last_playing > ?").bind(online),
 
@@ -389,15 +402,14 @@ async function stats(request, env, url) {
       "SELECT MAX(watching) AS peak, (SELECT ts FROM audience_minute WHERE ts >= ?1 ORDER BY watching DESC, ts ASC LIMIT 1) AS peak_ts FROM audience_minute WHERE ts >= ?1"
     ).bind(dayStart),
 
-    // Uma linha por hora do dia, com a média dos minutos daquela hora.
     env.DB.prepare(`
-      SELECT CAST((ts - ?1) / 3600 AS INTEGER) AS hour,
-             CAST(ROUND(AVG(watching)) AS INTEGER) AS watching
+      SELECT CAST((ts - ?1) / ?2 AS INTEGER) AS bucket,
+             MAX(watching) AS watching
         FROM audience_minute
        WHERE ts >= ?1
-       GROUP BY hour
-       ORDER BY hour
-    `).bind(dayStart),
+       GROUP BY bucket
+       ORDER BY bucket
+    `).bind(serieInicio, balde),
 
     // Sete dias de tela ligada, em média por aparelho que reportou naquele dia.
     env.DB.prepare(`
@@ -486,6 +498,10 @@ async function stats(request, env, url) {
     devicesActiveToday: sessionsToday ? sessionsToday.n : 0,
     sessionsTotal: first(totals).sessions || 0,
     dayStart,
+    range: range,
+    seriesStart: serieInicio,
+    bucketSeconds: balde,
+    // Mantido com o nome antigo para não quebrar nada que já leia daqui.
     hours: hours.results || [],
     week: week.results || [],
     byUf: byUf.results || [],
@@ -568,13 +584,44 @@ async function adminDevice(request, env, url) {
   return json({ error: "method" }, 405, env);
 }
 
+/**
+ * Os municípios de um estado, só os que têm aparelho.
+ *
+ * Fica em endereço próprio, e não dentro do /v1/stats, porque o painel só
+ * precisa disso quando alguém abre o detalhe de um estado: carregar 5.570
+ * municípios em toda atualização de 30 segundos seria peso puro.
+ */
+async function cities(request, env, url) {
+  if (!authorized(request, env)) return json({ error: "unauthorized" }, 401, env);
+
+  const uf = String(url.searchParams.get("uf") || "").toUpperCase();
+  if (!/^[A-Z]{2}$/.test(uf)) return json({ error: "uf" }, 400, env);
+
+  const now = Math.floor(Date.now() / 1000);
+  const grace = (await configNumber(env, "heartbeat_seconds", 300)) * OFFLINE_GRACE;
+
+  const rows = await env.DB.prepare(`
+    SELECT COALESCE(city, '(cidade não identificada)') AS city,
+           COUNT(*) AS devices,
+           SUM(CASE WHEN last_playing > ?2 THEN 1 ELSE 0 END) AS watching,
+           CAST(ROUND(AVG(screen_seconds)) AS INTEGER) AS avg_screen
+      FROM devices
+     WHERE country = 'BR' AND uf = ?1
+     GROUP BY COALESCE(city, '(cidade não identificada)')
+     HAVING devices > 0
+     ORDER BY devices DESC, city
+  `).bind(uf, now - grace).all();
+
+  return json({ uf: uf, cities: rows.results || [] }, 200, env);
+}
+
 /** Tudo que o editor do painel precisa, numa chamada só. */
 async function adminState(request, env) {
   if (!authorized(request, env)) return json({ error: "unauthorized" }, 401, env);
   const [cfg, pix, chans] = await env.DB.batch([
     env.DB.prepare("SELECT k, v FROM config ORDER BY k"),
     env.DB.prepare("SELECT uf, pix_key, label FROM pix_keys ORDER BY uf"),
-    env.DB.prepare("SELECT id, name, enabled, position FROM youtube_channels ORDER BY position, name")
+    env.DB.prepare("SELECT id, name, enabled, position, scope FROM youtube_channels ORDER BY position, name")
   ]);
   return json({
     config: cfg.results || [],
@@ -625,7 +672,7 @@ async function adminChannel(request, env, url) {
 
   if (request.method === "GET") {
     const rows = await env.DB.prepare(
-      "SELECT id, name, enabled, position FROM youtube_channels ORDER BY position, name"
+      "SELECT id, name, enabled, position, scope FROM youtube_channels ORDER BY position, name"
     ).all();
     return json({ channels: rows.results || [] }, 200, env);
   }
@@ -639,12 +686,16 @@ async function adminChannel(request, env, url) {
     if (!/^UC[A-Za-z0-9_-]{22}$/.test(id)) return json({ error: "id_invalido" }, 400, env);
     const name = strOrNull(body.name);
     if (!name) return json({ error: "nome_obrigatorio" }, 400, env);
+    // "BR" é nacional; qualquer outra coisa tem de ser uma UF de verdade, ou o
+    // canal sumiria de todas as televisões sem ninguém entender por quê.
+    const scope = String(body.scope || "BR").toUpperCase();
+    if (!/^[A-Z]{2}$/.test(scope)) return json({ error: "alcance_invalido" }, 400, env);
     await env.DB.prepare(`
-      INSERT INTO youtube_channels (id, name, enabled, position, added_at)
-      VALUES (?1, ?2, ?3, ?4, ?5)
-      ON CONFLICT(id) DO UPDATE SET name = ?2, enabled = ?3, position = ?4
+      INSERT INTO youtube_channels (id, name, enabled, position, added_at, scope)
+      VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+      ON CONFLICT(id) DO UPDATE SET name = ?2, enabled = ?3, position = ?4, scope = ?6
     `).bind(id, name, body.enabled === false ? 0 : 1,
-            intOrNull(body.position) || 0, Math.floor(Date.now() / 1000)).run();
+            intOrNull(body.position) || 0, Math.floor(Date.now() / 1000), scope).run();
     return json({ ok: true }, 200, env);
   }
 
@@ -679,9 +730,12 @@ const VIDEO_TTL = 1800; // meia hora: a fileira não precisa ser ao vivo
 
 async function videos(request, env) {
   const now = Math.floor(Date.now() / 1000);
+  // A UF vem da própria conexão da televisão que está pedindo, igual à chave
+  // PIX: quem está no Paraná não recebe a fileira de um canal de Pernambuco.
+  const uf = regionOf(request);
   const canais = await env.DB.prepare(
-    "SELECT id, name FROM youtube_channels WHERE enabled = 1 ORDER BY position, name"
-  ).all();
+    "SELECT id, name, scope FROM youtube_channels WHERE enabled = 1 AND (scope = 'BR' OR scope = ?1) ORDER BY position, name"
+  ).bind(uf || "").all();
 
   const saida = [];
   let motivo = null;
@@ -929,6 +983,16 @@ function first(result) {
 }
 
 /** A borda entrega "SP", "RS"… Fora do Brasil não há gerência para escolher. */
+/**
+ * Município aproximado da conexão. "Aproximado" a sério: com frequência é a
+ * cidade onde a operadora tem o ponto de presença, e não a de quem assiste. O
+ * painel diz isso ao lado do número, para ninguém tratar como cadastro.
+ */
+function cityOf(request) {
+  const c = (request.cf && request.cf.city) || null;
+  return c ? String(c).slice(0, 80) : null;
+}
+
 function regionOf(request) {
   const cf = request.cf || {};
   if (cf.country !== "BR") return null;

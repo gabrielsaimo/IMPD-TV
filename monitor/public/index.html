@@ -119,10 +119,27 @@ td.num,th.num{text-align:right}
 .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
 .saved{font-size:12px;color:var(--ok)}
 .addrow{display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;margin-top:14px;align-items:end}
-.addrow--ch{grid-template-columns:1.4fr 1fr auto}
+.addrow--ch{grid-template-columns:1.4fr 1fr .8fr auto}
 @media (max-width:620px){.addrow,.addrow--ch{grid-template-columns:1fr}}
 .tdmono{font-family:var(--mono);word-break:break-all}
 
+/* seletor de período */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-left:auto}
+.seg button{font:inherit;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:7px 12px;background:none;border:none;border-right:1px solid var(--line);color:var(--ink-3);cursor:pointer}
+.seg button:last-child{border-right:none}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.card__head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+
+/* modal de municípios */
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(5,7,10,.62)}
+.modal[hidden]{display:none!important}
+.modal__box{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);width:min(660px,100%);max-height:82vh;display:flex;flex-direction:column}
+.modal__top{display:flex;align-items:center;gap:14px;padding:20px 22px;border-bottom:1px solid var(--line-soft)}
+.modal__t{font-family:var(--display);font-weight:700;font-size:18px}
+.modal__body{overflow:auto;padding:6px 22px 22px}
+.modal__x{margin-left:auto;font:inherit;font-size:18px;line-height:1;background:none;border:none;color:var(--ink-3);cursor:pointer;padding:4px 8px;border-radius:6px}
+.modal__x:hover{color:var(--ink);background:var(--surface-2)}
 .gate{max-width:420px;margin:14vh auto;padding:28px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
 .gate h2{font-size:22px;font-weight:800}
 .gate p{color:var(--ink-3);font-size:12.5px;margin:10px 0 18px}
@@ -167,8 +184,17 @@ td.num,th.num{text-align:right}
 
   <section class="grid cols-3">
     <div class="card">
-      <div class="card__t">Aparelhos assistindo — hoje</div>
-      <div class="card__s">Contagem exata, hora a hora, da meia-noite até agora</div>
+      <div class="card__head">
+        <div>
+          <div class="card__t" id="aud-t">Pico de aparelhos assistindo</div>
+          <div class="card__s" id="aud-s">Hora a hora, da meia-noite até agora</div>
+        </div>
+        <div class="seg" role="group" aria-label="Período do gráfico">
+          <button type="button" data-range="hoje" aria-pressed="true">Hoje</button>
+          <button type="button" data-range="7d" aria-pressed="false">7 dias</button>
+          <button type="button" data-range="30d" aria-pressed="false">30 dias</button>
+        </div>
+      </div>
       <div class="chart" id="c-audiencia"><div class="tip"></div></div>
     </div>
     <div class="card">
@@ -278,12 +304,14 @@ td.num,th.num{text-align:right}
     <div class="card">
       <div class="card__t">Fontes de vídeo do YouTube</div>
       <div class="card__s">Os canais que alimentam a fileira de baixo. Desligar um tira ele da televisão na abertura seguinte.</div>
-      <div class="scroll-x"><table><thead><tr><th>Canal</th><th>ID</th><th>Estado</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
+      <div class="scroll-x"><table><thead><tr><th>Canal</th><th>Alcance</th><th>ID</th><th>Estado</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
       <div class="addrow addrow--ch">
         <div class="field"><label for="chid">ID do canal</label><input id="chid" placeholder="UCfb8GIF7etM7HaMmBJ150qg"></div>
         <div class="field"><label for="chname">Nome</label><input id="chname" placeholder="Bispo Roberto Santana"></div>
+        <div class="field"><label for="chscope">Alcance</label><select id="chscope"></select></div>
         <button type="button" class="btn" id="addch">Incluir</button>
       </div>
+      <p class="muted" style="font-size:11.5px;margin-top:10px">Nacional aparece em toda televisão. Um estado aparece só nas televisões daquele estado, pela mesma leitura de região que escolhe a chave PIX.</p>
       <span class="saved" id="chok"></span>
     </div>
   </section>
@@ -294,6 +322,16 @@ td.num,th.num{text-align:right}
   </p>
 
 </main>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-t">
+  <div class="modal__box">
+    <div class="modal__top">
+      <span class="modal__t" id="modal-t">Municípios</span>
+      <button type="button" class="modal__x" id="modal-x" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="modal__body" id="modal-body"></div>
+  </div>
+</div>
 
 <div class="gate" id="gate">
   <h2>Monitor IMPD TV</h2>
@@ -357,14 +395,14 @@ td.num,th.num{text-align:right}
   /* ---------------- dados ---------------- */
   function carregar(primeira){
     if (!token) return;
-    fetch(API + "/stats", { headers: { authorization: "Bearer " + token } })
+    fetch(API + "/stats?range=" + periodo, { headers: { authorization: "Bearer " + token } })
       .then(function(r){
         if (r.status === 401) throw new Error("Chave de acesso não confere.");
         if (!r.ok) throw new Error("O painel não respondeu (" + r.status + ").");
         return r.json();
       })
       .then(function(d){
-        if (primeira) { abrir(); ligarEditor(); }
+        if (primeira) { abrir(); ligarEditor(); ligarPeriodo(); ligarModal(); }
         // O editor carrega depois de pintar: o mapa precisa das chaves PIX
         // para dizer qual delas cada estado mostra.
         pintar(d);
@@ -377,6 +415,7 @@ td.num,th.num{text-align:right}
   }
 
   var ultimo = null;
+  var periodo = "hoje";
 
   function pintar(d){
     ultimo = d;
@@ -452,15 +491,36 @@ td.num,th.num{text-align:right}
 
   function audiencia(d){
     var box = $("c-audiencia"), tip = box.querySelector(".tip");
+    var porDia = d.bucketSeconds >= 86400;
+    // Quantos baldes o período tem, do começo da série até agora.
+    var total = Math.floor((d.generatedAt - d.seriesStart) / d.bucketSeconds) + 1;
+    if (!porDia) total = Math.min(total, 24);
     var pontos = [];
-    for (var h = 0; h < 24; h++) pontos.push(null);
-    d.hours.forEach(function(r){ if (r.hour >= 0 && r.hour < 24) pontos[r.hour] = r.watching; });
+    for (var i = 0; i < total; i++) pontos.push(null);
+    d.hours.forEach(function(r){
+      var b = r.bucket == null ? r.hour : r.bucket;
+      if (b >= 0 && b < total) pontos[b] = r.watching;
+    });
     var ate = -1;
     pontos.forEach(function(v, i){ if (v !== null) ate = i; });
-    if (ate < 0) { box.querySelectorAll("svg").forEach(function(s){ s.remove(); }); return; }
+    if (ate < 0) {
+      box.querySelectorAll("svg").forEach(function(x){ x.remove(); });
+      box.insertAdjacentHTML("afterbegin", '<p class="muted" style="padding:26px 0">Sem medição neste período ainda.</p>');
+      return;
+    }
+    var vazio = box.querySelector("p.muted"); if (vazio) vazio.remove();
     var serie = pontos.slice(0, ate + 1).map(function(v){ return v === null ? 0 : v; });
 
-    (redraws.aud || (redraws.aud = responsivo(box, function(W){
+    /** Rótulo do balde: "08h" por hora, "05/09" por dia. */
+    function rotulo(i){
+      if (!porDia) return (i < 10 ? "0" + i : i) + "h";
+      var dt = new Date((d.seriesStart + i * d.bucketSeconds) * 1000);
+      return dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    }
+
+    if (redraws.aud) { var v = box.querySelector("svg"); if (v) v.remove(); }
+    redraws.aud = null;
+    (redraws.aud = responsivo(box, function(W){
       var H = Math.round(Math.max(180, Math.min(240, W * .5)));
       var L = 48, R = 12, T = 18, B = 24, pw = W - L - R, ph = H - T - B;
       var max = escala(Math.max.apply(null, serie));
@@ -468,7 +528,8 @@ td.num,th.num{text-align:right}
       var x = function(i){ return last ? L + i / last * pw : L + pw / 2; };
       var y = function(v){ return T + ph - v / max * ph; };
       var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
-        "aria-label": "Aparelhos assistindo por hora, hoje. Pico de " + fmt(Math.max.apply(null, serie)) + "." });
+        "aria-label": "Pico de aparelhos assistindo por " + (porDia ? "dia" : "hora") +
+          ". Máximo de " + fmt(Math.max.apply(null, serie)) + "." });
       box.insertBefore(svg, tip);
       [0, .25, .5, .75, 1].forEach(function(f){
         var v = Math.round(max * f);
@@ -480,7 +541,7 @@ td.num,th.num{text-align:right}
       var passo = Math.max(1, Math.ceil((last + 1) / 6));
       for (var h = 0; h <= last; h += passo) {
         el("text", { class: "axis", x: x(h), y: H - 6, "text-anchor": "middle" }, svg)
-          .textContent = (h < 10 ? "0" + h : h) + "h";
+          .textContent = rotulo(h);
       }
       // Logo depois da meia-noite existe um ponto só: uma linha entre um ponto
       // e ele mesmo vira um traço fantasma descendo até o eixo.
@@ -504,10 +565,10 @@ td.num,th.num{text-align:right}
         var i = Math.max(0, Math.min(last, Math.round((sx - L) / pw * last)));
         cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", ".35");
         tipShow(tip, svg, box, x(i), y(serie[i]),
-          "<b>" + fmt(serie[i]) + " aparelhos</b><em>" + (i < 10 ? "0" + i : i) + "h</em>");
+          "<b>" + fmt(serie[i]) + " aparelhos</b><em>" + rotulo(i) + "</em>");
       });
       hit.addEventListener("mouseleave", function(){ tip.style.opacity = "0"; cross.setAttribute("opacity", "0"); });
-    })))();
+    }))();
   }
 
   function semana(d){
@@ -710,7 +771,8 @@ td.num,th.num{text-align:right}
       '<dt>Assistindo agora</dt><dd>' + fmt(r ? r.watching : 0) + '</dd>' +
       '<dt>Tela ligada · média</dt><dd>' + (r && r.avg_screen ? horas(r.avg_screen) : "—") + '</dd>' +
       '<dt>Chave PIX exibida</dt><dd class="tdmono">' + chave + '</dd>' +
-      '<dt>Gerência</dt><dd>' + ger + '</dd></dl>';
+      '<dt>Gerência</dt><dd>' + ger + '</dd></dl>' +
+      '<button type="button" class="btn" style="margin-top:14px" data-cidades="' + uf + '">Ver municípios de ' + uf + '</button>';
   }
 
   var PAIS = {US:"Estados Unidos",PT:"Portugal",JP:"Japão",PY:"Paraguai",AR:"Argentina",
@@ -849,6 +911,19 @@ td.num,th.num{text-align:right}
     }).catch(function(e){ flash("devok", e.message); });
   }
 
+  var UF_LISTA = Object.keys(UF_NOME).sort();
+
+  /** Um seletor de alcance: nacional, ou uma unidade federativa. */
+  function opcoesAlcance(id, atual, canalId, nome, ligado){
+    var o = '<option value="BR"' + (atual === "BR" ? " selected" : "") + '>Nacional</option>';
+    UF_LISTA.forEach(function(uf){
+      o += '<option value="' + uf + '"' + (atual === uf ? " selected" : "") + '>' + uf + ' · ' + UF_NOME[uf] + '</option>';
+    });
+    return '<select style="font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--line);' +
+           'border-radius:7px;background:var(--surface-2);color:var(--ink)" data-scope="' + canalId +
+           '" data-name="' + nome + '" data-en="' + (ligado ? 1 : 0) + '">' + o + '</select>';
+  }
+
   function carregarEditor(){
     return api("/admin/state").then(function(st){
       var cfg = {};
@@ -881,7 +956,10 @@ td.num,th.num{text-align:right}
       }).join("");
 
       $("canais").innerHTML = st.channels.map(function(c){
-        return '<tr><td>' + c.name + '</td><td class="tdmono muted">' + c.id + '</td>' +
+        var esc = c.name.replace(/"/g, "&quot;");
+        return '<tr><td>' + c.name + '</td>' +
+               '<td>' + opcoesAlcance('sc_' + c.id, c.scope || "BR", c.id, esc, c.enabled) + '</td>' +
+               '<td class="tdmono muted">' + c.id + '</td>' +
                '<td>' + (c.enabled ? '<span class="pill pill--ok">no ar</span>' : '<span class="pill pill--warn">desligado</span>') + '</td>' +
                '<td class="num"><button type="button" class="btn" data-togch="' + c.id + '" data-name="' +
                  c.name.replace(/"/g, "&quot;") + '" data-en="' + (c.enabled ? 1 : 0) + '">' +
@@ -892,8 +970,20 @@ td.num,th.num{text-align:right}
     }).catch(function(e){ flash("cfgok", "Não deu para carregar: " + e.message); });
   }
 
+  document.addEventListener("change", function(ev){
+    var t = ev.target;
+    if (!t.dataset || !t.dataset.scope) return;
+    api("/admin/channel", { method: "PUT", body: JSON.stringify({
+      id: t.dataset.scope, name: t.dataset.name, enabled: t.dataset.en === "1", scope: t.value
+    })}).then(function(){
+      flash("chok", t.value === "BR" ? "Canal passou a ser nacional." : "Canal passou a valer só em " + t.value + ".");
+      return carregarEditor();
+    }).catch(function(e){ flash("chok", e.message); });
+  });
+
   document.addEventListener("click", function(ev){
     var t = ev.target;
+    if (t.dataset && t.dataset.cidades) abrirCidades(t.dataset.cidades);
     if (t.dataset && t.dataset.deldev) {
       if (!confirm("Remover este aparelho e tudo que ele reportou?")) return;
       api("/admin/device?id=" + t.dataset.deldev, { method: "DELETE" })
@@ -918,7 +1008,59 @@ td.num,th.num{text-align:right}
     }
   });
 
+  var RANGE_LABEL = {
+    hoje: ["Hora a hora, da meia-noite até agora", "Hoje"],
+    "7d": ["Dia a dia, nos últimos 7 dias", "7 dias"],
+    "30d": ["Dia a dia, nos últimos 30 dias", "30 dias"]
+  };
+
+  function ligarPeriodo(){
+    var botoes = Array.prototype.slice.call(document.querySelectorAll(".seg button"));
+    botoes.forEach(function(b){
+      b.addEventListener("click", function(){
+        periodo = b.dataset.range;
+        botoes.forEach(function(o){ o.setAttribute("aria-pressed", String(o === b)); });
+        $("aud-s").textContent = RANGE_LABEL[periodo][0];
+        carregar(false);
+      });
+    });
+  }
+
+  /* ---------------- municípios ---------------- */
+  function abrirCidades(uf){
+    $("modal-t").textContent = "Municípios de " + (UF_NOME[uf] || uf);
+    $("modal-body").innerHTML = '<p class="muted" style="padding:18px 0">Carregando…</p>';
+    $("modal").hidden = false;
+    $("modal-x").focus();
+
+    api("/cities?uf=" + uf).then(function(r){
+      var c = r.cities || [];
+      if (!c.length) {
+        $("modal-body").innerHTML = '<p class="muted" style="padding:18px 0">Nenhum aparelho neste estado ainda.</p>';
+        return;
+      }
+      $("modal-body").innerHTML =
+        '<table><thead><tr><th>Município</th><th class="num">Aparelhos</th><th class="num">Assistindo</th><th class="num">Tela ligada</th></tr></thead><tbody>' +
+        c.map(function(m){
+          return '<tr><td>' + m.city + '</td><td class="num"><b>' + fmt(m.devices) + '</b></td>' +
+                 '<td class="num">' + fmt(m.watching) + '</td>' +
+                 '<td class="num">' + (m.avg_screen ? horas(m.avg_screen) : "—") + '</td></tr>';
+        }).join("") + '</tbody></table>' +
+        '<p class="muted" style="font-size:11.5px;margin-top:14px">Cidade aproximada da conexão. Às vezes é onde a operadora tem o ponto de presença, e não onde a televisão está — serve para ver concentração, não como cadastro de endereço.</p>';
+    }).catch(function(e){
+      $("modal-body").innerHTML = '<p class="muted" style="padding:18px 0">Não deu para carregar: ' + e.message + '</p>';
+    });
+  }
+
+  function ligarModal(){
+    $("modal-x").addEventListener("click", function(){ $("modal").hidden = true; });
+    $("modal").addEventListener("click", function(ev){ if (ev.target === $("modal")) $("modal").hidden = true; });
+    document.addEventListener("keydown", function(ev){ if (ev.key === "Escape") $("modal").hidden = true; });
+  }
+
   function ligarEditor(){
+    $("chscope").innerHTML = '<option value="BR">Nacional</option>' +
+      UF_LISTA.map(function(uf){ return '<option value="' + uf + '">' + uf + ' · ' + UF_NOME[uf] + '</option>'; }).join("");
     $("salvarcfg").addEventListener("click", function(){
       var entries = Array.prototype.slice.call(document.querySelectorAll("#cfgform input"))
         .map(function(i){
@@ -941,7 +1083,8 @@ td.num,th.num{text-align:right}
 
     $("addch").addEventListener("click", function(){
       api("/admin/channel", { method: "PUT", body: JSON.stringify({
-        id: $("chid").value.trim(), name: $("chname").value.trim(), enabled: true
+        id: $("chid").value.trim(), name: $("chname").value.trim(),
+        enabled: true, scope: $("chscope").value
       })}).then(function(){
         $("chid").value = $("chname").value = "";
         flash("chok", "Canal incluído. Entra na fileira na abertura seguinte.");
