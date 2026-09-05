@@ -56,6 +56,10 @@ h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.02em;line-height:1
 .bar button:hover{color:var(--screen-ink);border-color:var(--screen-ink-3)}
 
 .grid{display:grid;gap:16px;margin:16px 0 28px}
+/* Item de grid nasce com min-width:auto, ou seja, "no mínimo o tamanho do meu
+   conteúdo". Uma tabela larga então estica a coluna e o overflow-x de dentro
+   nunca chega a agir — no celular a página inteira é que rolava de lado. */
+.grid > *{min-width:0}
 /* Quinze cartões de peso igual em fila viram parede. Os títulos de grupo dão
    ao olho onde parar, e dizem para que serve cada trecho da página. */
 .group{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:36px 0 0;
@@ -63,7 +67,7 @@ h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.02em;line-height:1
 .group span{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:.01em}
 .group small{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .cols-3{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);align-self:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);align-self:start;min-width:0}
 .card__t{font-family:var(--display);font-weight:700;font-size:16px}
 .card__s{font-size:11.5px;color:var(--ink-3);margin-top:4px;letter-spacing:.03em}
 
@@ -89,9 +93,11 @@ table{width:100%;border-collapse:collapse;margin-top:12px}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
 th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
 td.num,th.num{text-align:right}
+/* A coluna dos botões recebe o que precisa; quem cede espaço é o texto. */
+td:last-child,th:last-child{white-space:nowrap;width:1%}
 .scroll-x{overflow-x:auto}
 
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid currentColor}
+.pill{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid currentColor}
 .pill--ok{color:var(--ok)} .pill--warn{color:var(--warn)} .pill--danger{color:var(--danger)}
 .meter{height:8px;border-radius:999px;background:var(--accent-wash);overflow:hidden;margin-top:6px}
 .meter i{display:block;height:100%;background:var(--accent-bright);border-radius:999px}
@@ -117,7 +123,7 @@ td.num,th.num{text-align:right}
 .field label{display:block;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
 .field input,.field select{width:100%;font:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink)}
 .field input:disabled{opacity:.55}
-.btn{font:inherit;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);cursor:pointer}
+.btn{font:inherit;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--accent);color:var(--accent)}
 .btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn--primary:hover{color:#fff;opacity:.9}
@@ -125,10 +131,18 @@ td.num,th.num{text-align:right}
 .btn--danger:hover{border-color:var(--danger);color:var(--danger)}
 .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
 .saved{font-size:12px;color:var(--ok)}
-.addrow{display:grid;grid-template-columns:90px 1fr 1fr auto;gap:8px;margin-top:14px;align-items:end}
-.addrow--ch{grid-template-columns:1.4fr 1fr .8fr auto}
+.addrow{display:grid;grid-template-columns:90px minmax(220px,1fr) minmax(220px,1fr) auto;gap:10px;margin-top:14px;align-items:end}
+.addrow--ch{grid-template-columns:minmax(240px,1.2fr) minmax(200px,1fr) minmax(190px,.8fr) auto}
 @media (max-width:620px){.addrow,.addrow--ch{grid-template-columns:1fr}}
-.tdmono{font-family:var(--mono);word-break:break-all}
+/* Sem break-all: quebrar no meio da palavra vira "pixba@impd.o rg.br", que
+   parece defeito e não dá para conferir de relance. A tabela é que rola,
+   quando não couber. */
+.tdmono{font-family:var(--mono);white-space:nowrap}
+/* O identificador do canal tem 24 caracteres e não cabe em coluna própria sem
+   quebrar a tabela. Fica embaixo do nome, numa linha só, cortado no fim. */
+.chid{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:3px;
+  max-width:26ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:copy}
+.chid:hover{color:var(--accent)}
 
 /* seletor de período */
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-left:auto}
@@ -298,7 +312,7 @@ td.num,th.num{text-align:right}
     </div>
   </section>
 
-  <section class="grid cols-3">
+  <section class="grid">
     <div class="card">
       <div class="card__t">Chaves PIX por gerência</div>
       <div class="card__s">A oferta dada naquele estado entra na conta daquela regional. Estado sem chave cai na nacional.</div>
@@ -311,10 +325,13 @@ td.num,th.num{text-align:right}
       </div>
       <span class="saved" id="pixok"></span>
     </div>
+  </section>
+
+  <section class="grid">
     <div class="card">
       <div class="card__t">Fontes de vídeo do YouTube</div>
       <div class="card__s">Os canais que alimentam a fileira de baixo. Desligar um tira ele da televisão na abertura seguinte.</div>
-      <div class="scroll-x"><table><thead><tr><th>Canal</th><th>Alcance</th><th>ID</th><th>Estado</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
+      <div class="scroll-x"><table><thead><tr><th>Canal</th><th>Alcance</th><th>Estado</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
       <div class="addrow addrow--ch">
         <div class="field"><label for="chid">ID do canal</label><input id="chid" placeholder="UCfb8GIF7etM7HaMmBJ150qg"></div>
         <div class="field"><label for="chname">Nome</label><input id="chname" placeholder="Bispo Roberto Santana"></div>
@@ -992,9 +1009,13 @@ td.num,th.num{text-align:right}
 
       $("canais").innerHTML = st.channels.map(function(c){
         var esc = c.name.replace(/"/g, "&quot;");
-        return '<tr><td>' + c.name + '</td>' +
+        // O identificador não é para ler de relance: é para conferir e copiar.
+        // Numa coluna própria ele quebrava a tabela, então vai embaixo do nome,
+        // cortado com reticências e inteiro no título e ao copiar.
+        return '<tr><td><a href="https://www.youtube.com/channel/' + c.id + '" target="_blank" rel="noopener">' +
+                 c.name + '</a>' +
+                 '<div class="chid" title="' + c.id + '" data-copiar="' + c.id + '">' + c.id + '</div></td>' +
                '<td>' + opcoesAlcance('sc_' + c.id, c.scope || "BR", c.id, esc, c.enabled) + '</td>' +
-               '<td class="tdmono muted">' + c.id + '</td>' +
                '<td>' + (c.enabled ? '<span class="pill pill--ok">no ar</span>' : '<span class="pill pill--warn">desligado</span>') + '</td>' +
                '<td class="num"><button type="button" class="btn" data-togch="' + c.id + '" data-name="' +
                  c.name.replace(/"/g, "&quot;") + '" data-en="' + (c.enabled ? 1 : 0) + '">' +
@@ -1018,6 +1039,11 @@ td.num,th.num{text-align:right}
 
   document.addEventListener("click", function(ev){
     var t = ev.target;
+    if (t.dataset && t.dataset.copiar) {
+      navigator.clipboard.writeText(t.dataset.copiar)
+        .then(function(){ flash("chok", "Identificador copiado."); })
+        .catch(function(){ flash("chok", t.dataset.copiar); });
+    }
     if (t.dataset && t.dataset.cidades) abrirCidades(t.dataset.cidades);
     if (t.dataset && t.dataset.deldev) {
       if (!confirm("Remover este aparelho e tudo que ele reportou?")) return;
