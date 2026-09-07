@@ -49,6 +49,7 @@ export default {
         case "/v1/event": return await event(request, env);
         case "/v1/videos": return await videos(request, env);
         case "/v1/cities": return await cities(request, env, url);
+        case "/v1/insights": return await insights(request, env, url);
         case "/v1/stats": return await stats(request, env, url);
         case "/v1/pix":   return await pixAdmin(request, env);
         case "/v1/admin/state":   return await adminState(request, env);
@@ -1028,6 +1029,124 @@ function extrairVideos(html) {
 
   const vistos = new Set();
   return achados.filter(function (v) { return !vistos.has(v.id) && vistos.add(v.id); });
+}
+/**
+ * O que os números dizem quando se olha para trás.
+ *
+ * Fica separado do /v1/stats de propósito: aquilo é o "agora" e roda de trinta
+ * em trinta segundos; isto varre trinta dias e só muda de hora em hora. Juntar
+ * os dois faria o painel reler noventa mil linhas por minuto para mostrar a
+ * mesma coisa.
+ */
+async function insights(request, env, url) {
+  if (!authorized(request, env)) return json({ error: "unauthorized" }, 401, env);
+
+  const now = Math.floor(Date.now() / 1000);
+  const dia = spMidnight(now);
+  const de30 = dia - 29 * 86400;
+  const de7 = dia - 6 * 86400;
+  // O fuso da igreja é o de São Paulo; sem o deslocamento, "domingo às 19h"
+  // viraria sábado às 22h no agrupamento.
+  const off = SP_OFFSET;
+
+  const [ritmo, crescimento, eventos, faixas, modelos, sistemas, quedas, picos] = await env.DB.batch([
+    // Ritmo: quanta gente costuma estar ligada em cada hora de cada dia da
+    // semana. É o que diz à liderança quando a congregação realmente assiste.
+    env.DB.prepare(`
+      SELECT CAST(strftime('%w', ts + ?2, 'unixepoch') AS INTEGER) AS dow,
+             CAST(strftime('%H', ts + ?2, 'unixepoch') AS INTEGER) AS hora,
+             CAST(ROUND(AVG(watching)) AS INTEGER) AS media,
+             MAX(watching) AS pico
+        FROM audience_minute
+       WHERE ts >= ?1
+       GROUP BY dow, hora
+    `).bind(de30, off),
+
+    // Quantas televisões entraram no parque a cada dia.
+    env.DB.prepare(`
+      SELECT date(first_seen + ?2, 'unixepoch') AS dia, COUNT(*) AS novas
+        FROM devices
+       WHERE first_seen >= ?1
+       GROUP BY dia ORDER BY dia
+    `).bind(de30, off),
+
+    // O que apertaram, dia a dia — e não só o total de hoje.
+    env.DB.prepare(`
+      SELECT date(ts + ?2, 'unixepoch') AS dia, type, COUNT(*) AS n
+        FROM events
+       WHERE ts >= ?1 AND type IN ('open_pix','open_prayer','open_videos','open_info','video_open')
+       GROUP BY dia, type ORDER BY dia
+    `).bind(de30, off),
+
+    // Quem assiste pouco e quem deixa a televisão o dia inteiro. A média
+    // sozinha esconde isso: uma TV esquecida ligada puxa todo mundo para cima.
+    env.DB.prepare(`
+      SELECT CASE
+               WHEN seconds < 1800   THEN '0'
+               WHEN seconds < 3600   THEN '1'
+               WHEN seconds < 10800  THEN '2'
+               WHEN seconds < 21600  THEN '3'
+               WHEN seconds < 43200  THEN '4'
+               ELSE '5' END AS faixa,
+             COUNT(*) AS aparelhos
+        FROM screen_day
+       WHERE day >= date(?1, 'unixepoch')
+       GROUP BY faixa ORDER BY faixa
+    `).bind(de7 + off),
+
+    env.DB.prepare(`
+      SELECT COALESCE(model,'(não informado)') AS model, COUNT(*) AS n
+        FROM devices GROUP BY COALESCE(model,'(não informado)')
+       ORDER BY n DESC LIMIT 10
+    `),
+
+    env.DB.prepare(`
+      SELECT COALESCE(android_sdk, 0) AS sdk, COUNT(*) AS n
+        FROM devices GROUP BY COALESCE(android_sdk, 0) ORDER BY sdk
+    `),
+
+    // Quedas recuperadas sozinhas, dia a dia: é a saúde do sinal na casa das
+    // pessoas, que não aparece em teste feito daqui.
+    env.DB.prepare(`
+      SELECT date(ts + ?2, 'unixepoch') AS dia, COUNT(*) AS n
+        FROM events WHERE ts >= ?1 AND type = 'reconnect'
+       GROUP BY dia ORDER BY dia
+    `).bind(de30, off),
+
+    // A que horas o pico acontece em cada dia.
+    env.DB.prepare(`
+      SELECT date(ts + ?2, 'unixepoch') AS dia,
+             MAX(watching) AS pico,
+             CAST(strftime('%H', ts + ?2, 'unixepoch') AS INTEGER) AS hora
+        FROM audience_minute
+       WHERE ts >= ?1
+       GROUP BY dia ORDER BY dia
+    `).bind(de30, off)
+  ]);
+
+  // Mediana de tela ligada hoje. A média já está no painel e mente quando uma
+  // televisão fica esquecida ligada; a mediana é a casa do meio.
+  const mediana = await env.DB.prepare(`
+    SELECT AVG(seconds) AS m FROM (
+      SELECT seconds,
+             ROW_NUMBER() OVER (ORDER BY seconds) AS rn,
+             COUNT(*) OVER () AS c
+        FROM screen_day WHERE day = date(?1, 'unixepoch')
+    ) WHERE rn IN ((c + 1) / 2, (c + 2) / 2)
+  `).bind(dia + off).first();
+
+  return json({
+    generatedAt: now,
+    ritmo: ritmo.results || [],
+    crescimento: crescimento.results || [],
+    eventos: eventos.results || [],
+    faixas: faixas.results || [],
+    modelos: modelos.results || [],
+    sistemas: sistemas.results || [],
+    quedas: quedas.results || [],
+    picos: picos.results || [],
+    medianaHoje: mediana && mediana.m ? Math.round(mediana.m) : 0
+  }, 200, env);
 }
 /* ------------------------------------------------------------------ */
 /* Apoio                                                               */

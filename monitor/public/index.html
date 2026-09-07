@@ -41,7 +41,7 @@
   --good:#35C79A;
   --warn:#FFB020;
 
-  --s1:#4A9EFF; --s2:#FF8A4C;
+  --s1:#3987E5; --s2:#D95926; --s3:#199E70;
 
   --chart-surface:#0E1218;
   --grid:#1A222C;
@@ -71,7 +71,7 @@
   --onair:#C4241C;
   --good:#0F7A5C;
   --warn:#9A6100;
-  --s1:#1668D6; --s2:#D2601F;
+  --s1:#2A78D6; --s2:#EB6834; --s3:#1BAF7A;
   --chart-surface:#FFFFFF;
   --grid:#E6EBF1;
   --ramp-1:#DCE9FA; --ramp-2:#B4D2F6; --ramp-3:#7FB0EE;
@@ -96,7 +96,7 @@
   --onair:#C4241C;
   --good:#0F7A5C;
   --warn:#9A6100;
-  --s1:#1668D6; --s2:#D2601F;
+  --s1:#2A78D6; --s2:#EB6834; --s3:#1BAF7A;
   --chart-surface:#FFFFFF;
   --grid:#E6EBF1;
   --ramp-1:#DCE9FA; --ramp-2:#B4D2F6; --ramp-3:#7FB0EE;
@@ -273,6 +273,29 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
 .ufdet dt{color:var(--ink-3)}
 .ufdet dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
 
+/* ---------- mapa de ritmo ----------
+   Sete linhas por vinte e quatro colunas. Célula é quadrada e pequena de
+   propósito: o que se lê aqui é a mancha, não o número de cada hora. */
+/* O cartão corta o que passa da borda, então quem rola é o mapa: no celular
+   vinte e quatro colunas não cabem, e cortar esconderia justamente as horas
+   do culto da noite. */
+#ritmo{overflow-x:auto;margin-top:18px;padding-bottom:4px}
+.ritmo{display:grid;grid-template-columns:auto repeat(24,1fr);gap:2px}
+.ritmo > *{min-width:0}
+@media (max-width:760px){.ritmo{min-width:560px}}
+.ritmo__c{aspect-ratio:1;border-radius:2px;min-height:9px;transition:transform .12s,box-shadow .12s}
+.ritmo__c:hover{transform:scale(1.9);z-index:2;border-radius:3px;
+  box-shadow:0 0 0 1px var(--panel),0 0 0 2px var(--signal)}
+.ritmo__h{font-family:var(--mono);font-size:8.5px;color:var(--ink-3);text-align:center;padding-bottom:4px}
+.ritmo__d{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);padding-right:8px;
+  display:flex;align-items:center;justify-content:flex-end}
+@media (max-width:640px){.ritmo__h{font-size:0}.ritmo__c{min-height:7px}}
+
+/* ---------- legenda ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:16px;font-size:11.5px;color:var(--ink-2)}
+.legend span{display:flex;align-items:center;gap:8px}
+.legend i{width:10px;height:10px;border-radius:3px;display:block;flex:none}
+
 /* ---------- formulários ---------- */
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px;margin-top:18px}
 .field label{display:block;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
@@ -448,6 +471,66 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
       <div class="card__t">Televisões mudas</div>
       <div class="card__s">Cadastradas, mas sem dar sinal há mais de dois dias</div>
       <div class="scroll-x"><table><thead><tr><th>Aparelho</th><th>UF</th><th>Versão</th><th class="num">Sem sinal há</th></tr></thead><tbody id="quietas"></tbody></table></div>
+    </div>
+  </section>
+
+  <h2 class="group"><span>Padrões</span><small>o que os números dizem olhando trinta dias para trás</small></h2>
+  <section class="grid">
+    <div class="card">
+      <div class="card__head">
+        <div>
+          <div class="card__t">O ritmo da congregação</div>
+          <div class="card__s">Média de televisões ligadas em cada hora de cada dia, nos últimos 30 dias</div>
+        </div>
+      </div>
+      <div id="ritmo"></div>
+      <div class="ramp">
+        <span>Vazio</span>
+        <span class="ramp__bar" aria-hidden="true"><i style="background:var(--ramp-1)"></i><i style="background:var(--ramp-2)"></i><i style="background:var(--ramp-3)"></i><i style="background:var(--ramp-4)"></i><i style="background:var(--ramp-5)"></i><i style="background:var(--ramp-6)"></i></span>
+        <span>Cheio</span>
+      </div>
+      <div class="tiles" style="margin-top:20px">
+        <div class="tile"><div class="tile__l">Horário mais forte</div><div class="tile__v" id="p-hora">—</div><div class="tile__d" id="p-hora-d">—</div></div>
+        <div class="tile"><div class="tile__l">Dia mais forte</div><div class="tile__v" id="p-dia">—</div><div class="tile__d" id="p-dia-d">—</div></div>
+        <div class="tile"><div class="tile__l">Tela ligada · mediana</div><div class="tile__v" id="p-mediana">—</div><div class="tile__d">metade assiste menos que isso</div></div>
+        <div class="tile"><div class="tile__l">Novas em 7 dias</div><div class="tile__v" id="p-novas">—</div><div class="tile__d">televisões que entraram</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid cols-3">
+    <div class="card">
+      <div class="card__t">Crescimento do parque</div>
+      <div class="card__s">Televisões que deram o primeiro sinal, dia a dia</div>
+      <div class="chart" id="c-cresce"><div class="tip"></div></div>
+    </div>
+    <div class="card">
+      <div class="card__t">O que apertaram, dia a dia</div>
+      <div class="card__s">Painéis abertos pelo controle nos últimos 30 dias</div>
+      <div class="chart" id="c-eventos"><div class="tip"></div></div>
+      <div class="legend" id="leg-eventos"></div>
+    </div>
+  </section>
+
+  <section class="grid cols-3">
+    <div class="card">
+      <div class="card__t">Quanto tempo a televisão fica ligada</div>
+      <div class="card__s">Aparelhos por faixa de tempo, nos últimos 7 dias — a média sozinha esconde isso</div>
+      <div class="chart" id="c-faixas"><div class="tip"></div></div>
+    </div>
+    <div class="card">
+      <div class="card__t">Hardware em campo</div>
+      <div class="card__s">Que aparelho a igreja tem instalado, e em qual Android</div>
+      <div class="chart" id="c-modelos"><div class="tip"></div></div>
+      <div id="sistemas" style="margin-top:16px"></div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <div class="card__t">Quedas de sinal recuperadas sozinhas</div>
+      <div class="card__s">Por dia. É a saúde da rede na casa do fiel, que teste feito daqui não enxerga.</div>
+      <div class="chart" id="c-quedas"><div class="tip"></div></div>
     </div>
   </section>
 
@@ -680,7 +763,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
         return r.json();
       })
       .then(function(d){
-        if (primeira) { abrir(); ligarEditor(); ligarPeriodo(); ligarModal(); }
+        if (primeira) { abrir(); ligarEditor(); ligarPeriodo(); ligarModal(); carregarPadroes(); }
         // O editor carrega depois de pintar: o mapa precisa das chaves PIX
         // para dizer qual delas cada estado mostra.
         pintar(d);
@@ -1484,9 +1567,262 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     });
   }
 
+
+  /* ================= Padrões =================
+     Varrem trinta dias e mudam devagar: buscam uma vez e recarregam de dez em
+     dez minutos, não junto com o "agora" de trinta em trinta segundos. */
+  var DIAS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+  var DIAS_CURTO = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  var NOME_EV = { open_pix:"Doação por PIX", open_prayer:"Pedidos de oração", open_videos:"Últimos vídeos" };
+  var SERIE_EV = ["open_pix","open_prayer","open_videos"];
+
+  function carregarPadroes(){
+    return api("/insights").then(function(d){
+      ritmoMapa(d);
+      resumoPadroes(d);
+      crescimento(d);
+      eventosNoTempo(d);
+      faixasDeTela(d);
+      hardware(d);
+      quedasNoTempo(d);
+    }).catch(function(){});
+  }
+
+  /* --- o mapa de ritmo: 7 linhas por 24 colunas --- */
+  function ritmoMapa(d){
+    var celula = {}, max = 0;
+    d.ritmo.forEach(function(r){
+      celula[r.dow + ":" + r.hora] = r;
+      if (r.media > max) max = r.media;
+    });
+
+    var html = '<div class="ritmo">';
+    html += '<div></div>';
+    for (var h = 0; h < 24; h++) {
+      html += '<div class="ritmo__h">' + (h % 3 === 0 ? (h < 10 ? "0" + h : h) : "") + '</div>';
+    }
+    for (var dw = 0; dw < 7; dw++) {
+      html += '<div class="ritmo__d">' + DIAS_CURTO[dw] + '</div>';
+      for (var hh = 0; hh < 24; hh++) {
+        var c = celula[dw + ":" + hh];
+        var v = c ? c.media : 0;
+        var nivel = !max ? 1 : v === 0 ? 1 : Math.min(6, 1 + Math.ceil(v / max * 5));
+        var titulo = DIAS[dw] + ", " + (hh < 10 ? "0" + hh : hh) + "h — " +
+          (c ? fmt(v) + " em média, pico de " + fmt(c.pico) : "sem medição");
+        html += '<div class="ritmo__c" style="background:var(--ramp-' + nivel + ')" title="' + titulo + '"></div>';
+      }
+    }
+    $("ritmo").innerHTML = html + "</div>";
+  }
+
+  function resumoPadroes(d){
+    // Hora e dia mais fortes: a soma de todas as semanas, não o pico de um dia
+    // isolado, que poderia ter sido uma transmissão fora do comum.
+    var porHora = {}, porDia = {};
+    d.ritmo.forEach(function(r){
+      porHora[r.hora] = (porHora[r.hora] || 0) + r.media;
+      porDia[r.dow] = (porDia[r.dow] || 0) + r.media;
+    });
+    function maior(o){
+      var k = null;
+      for (var i in o) if (k === null || o[i] > o[k]) k = i;
+      return k;
+    }
+    var h = maior(porHora), dw = maior(porDia);
+    $("p-hora").textContent = h === null ? "—" : (h < 10 ? "0" + h : h) + "h";
+    $("p-hora-d").textContent = h === null ? "—" : "é quando mais gente assiste";
+    $("p-dia").textContent = dw === null ? "—" : DIAS_CURTO[dw];
+    $("p-dia-d").textContent = dw === null ? "—" : DIAS[dw] + " concentra a audiência";
+    $("p-mediana").textContent = d.medianaHoje ? horas(d.medianaHoje) : "—";
+
+    var corte = new Date(Date.now() - 7 * 86400e3).toISOString().slice(0, 10);
+    var novas = d.crescimento.reduce(function(a, r){ return a + (r.dia >= corte ? r.novas : 0); }, 0);
+    $("p-novas").textContent = fmt(novas);
+  }
+
+  /** Colunas por dia, com rótulo de data. Serve para crescimento e para quedas. */
+  function colunasPorDia(idBox, linhas, campo, cor, sufixo){
+    var box = $(idBox), tip = box.querySelector(".tip");
+    if (!linhas.length) {
+      box.querySelectorAll("svg").forEach(function(x){ x.remove(); });
+      box.insertAdjacentHTML("afterbegin", '<p class="muted" style="padding:22px 0">Nada registrado neste período.</p>');
+      return;
+    }
+    var vazio = box.querySelector("p.muted"); if (vazio) vazio.remove();
+    var old = box.querySelector("svg"); if (old) old.remove();
+
+    var W = Math.max(280, Math.round(box.clientWidth));
+    var H = Math.round(Math.max(170, Math.min(230, W * .42)));
+    var L = 40, R = 12, T = 26, B = 26, pw = W - L - R, ph = H - T - B;
+    var esc = escala(Math.max.apply(null, linhas.map(function(r){ return r[campo]; })));
+    var band = pw / linhas.length, bw = Math.min(20, band * .58);
+    var y = function(v){ return T + ph - v / esc.max * ph; };
+
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
+      "aria-label": "Colunas por dia. Máximo de " + fmt(esc.max) + "." });
+    box.insertBefore(svg, tip);
+    for (var v = 0; v <= esc.max + .5; v += esc.passo) {
+      el("line", { class: "gridline", x1: L, x2: L + pw, y1: y(v), y2: y(v) }, svg);
+      el("text", { class: "axis", x: L - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = fmt(v);
+    }
+    var passo = Math.max(1, Math.ceil(linhas.length / 6));
+    linhas.forEach(function(r, i){
+      var cx = L + band * i + band / 2, top = y(r[campo]);
+      el("path", { d: roundedTop(cx - bw / 2, top, bw, T + ph - top, 3), fill: cor }, svg);
+      if (i % passo === 0) {
+        var dt = r.dia.slice(8) + "/" + r.dia.slice(5, 7);
+        el("text", { class: "axis", x: cx, y: H - 8, "text-anchor": "middle" }, svg).textContent = dt;
+      }
+      var hit = el("rect", { x: L + band * i, y: T, width: band, height: ph, fill: "transparent" }, svg);
+      hit.addEventListener("mouseenter", function(){
+        tipShow(tip, svg, box, cx, top, "<b>" + fmt(r[campo]) + " " + sufixo + "</b><em>" + r.dia + "</em>");
+      });
+      hit.addEventListener("mouseleave", function(){ tip.style.opacity = "0"; });
+    });
+  }
+
+  function crescimento(d){ colunasPorDia("c-cresce", d.crescimento, "novas", "var(--s1)", "televisões"); }
+  function quedasNoTempo(d){ colunasPorDia("c-quedas", d.quedas, "n", "var(--s2)", "quedas"); }
+
+  /* --- três séries no tempo, com legenda e rótulo na ponta --- */
+  function eventosNoTempo(d){
+    var box = $("c-eventos"), tip = box.querySelector(".tip");
+    var dias = [], porTipo = {};
+    SERIE_EV.forEach(function(t){ porTipo[t] = {}; });
+    d.eventos.forEach(function(r){
+      if (dias.indexOf(r.dia) < 0) dias.push(r.dia);
+      if (porTipo[r.type]) porTipo[r.type][r.dia] = r.n;
+    });
+    dias.sort();
+
+    var old = box.querySelector("svg"); if (old) old.remove();
+    var vazio = box.querySelector("p.muted"); if (vazio) vazio.remove();
+    if (dias.length < 1) {
+      box.insertAdjacentHTML("afterbegin", '<p class="muted" style="padding:22px 0">Ninguém apertou nada nos últimos 30 dias.</p>');
+      $("leg-eventos").innerHTML = "";
+      return;
+    }
+
+    var W = Math.max(280, Math.round(box.clientWidth));
+    var H = Math.round(Math.max(170, Math.min(230, W * .5)));
+    var L = 40, R = 14, T = 26, B = 26, pw = W - L - R, ph = H - T - B;
+    var todos = [];
+    SERIE_EV.forEach(function(t){ dias.forEach(function(dia){ todos.push(porTipo[t][dia] || 0); }); });
+    var esc = escala(Math.max.apply(null, todos));
+    var x = function(i){ return dias.length < 2 ? L + pw / 2 : L + i / (dias.length - 1) * pw; };
+    var y = function(v){ return T + ph - v / esc.max * ph; };
+
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
+      "aria-label": "Painéis abertos por dia, três séries." });
+    box.insertBefore(svg, tip);
+    for (var v = 0; v <= esc.max + .5; v += esc.passo) {
+      el("line", { class: "gridline", x1: L, x2: L + pw, y1: y(v), y2: y(v) }, svg);
+      el("text", { class: "axis", x: L - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = fmt(v);
+    }
+    var passo = Math.max(1, Math.ceil(dias.length / 6));
+    dias.forEach(function(dia, i){
+      if (i % passo) return;
+      el("text", { class: "axis", x: x(i), y: H - 8, "text-anchor": "middle" }, svg)
+        .textContent = dia.slice(8) + "/" + dia.slice(5, 7);
+    });
+
+    SERIE_EV.forEach(function(t, k){
+      var cor = "var(--s" + (k + 1) + ")";
+      var pontos = dias.map(function(dia){ return porTipo[t][dia] || 0; });
+      if (dias.length > 1) {
+        el("path", {
+          d: pontos.map(function(v, i){ return (i ? "L" : "M") + x(i) + "," + y(v); }).join(" "),
+          fill: "none", stroke: cor, "stroke-width": "2", "stroke-linejoin": "round", "stroke-linecap": "round"
+        }, svg);
+      }
+      var ult = pontos.length - 1;
+      el("circle", { cx: x(ult), cy: y(pontos[ult]), r: 4, fill: cor,
+        stroke: "var(--chart-surface)", "stroke-width": "2" }, svg);
+    });
+
+    // Legenda sempre presente: cor sozinha nunca é o único jeito de saber quem é quem.
+    $("leg-eventos").innerHTML = SERIE_EV.map(function(t, k){
+      var total = dias.reduce(function(a, dia){ return a + (porTipo[t][dia] || 0); }, 0);
+      return '<span><i style="background:var(--s' + (k + 1) + ')"></i>' + NOME_EV[t] + ' · ' + fmt(total) + '</span>';
+    }).join("");
+
+    var hit = el("rect", { x: L, y: T, width: pw, height: ph, fill: "transparent", style: "cursor:crosshair" }, svg);
+    hit.addEventListener("mousemove", function(ev){
+      var r = svg.getBoundingClientRect();
+      var sx = (ev.clientX - r.left) / r.width * W;
+      var i = Math.max(0, Math.min(dias.length - 1, Math.round((sx - L) / pw * (dias.length - 1))));
+      var linhas = SERIE_EV.map(function(t){ return '<em>' + NOME_EV[t] + ": " + fmt(porTipo[t][dias[i]] || 0) + '</em>'; }).join("");
+      tipShow(tip, svg, box, x(i), T + 10, "<b>" + dias[i] + "</b>" + linhas);
+    });
+    hit.addEventListener("mouseleave", function(){ tip.style.opacity = "0"; });
+  }
+
+  var FAIXA_NOME = ["até 30 min","30 min a 1 h","1 h a 3 h","3 h a 6 h","6 h a 12 h","mais de 12 h"];
+
+  function faixasDeTela(d){
+    var linhas = FAIXA_NOME.map(function(nome, i){
+      var achou = d.faixas.filter(function(f){ return Number(f.faixa) === i; })[0];
+      return { nome: nome, n: achou ? achou.aparelhos : 0 };
+    });
+    barrasH("c-faixas", linhas, "nome", "n", "aparelhos");
+  }
+
+  function hardware(d){
+    barrasH("c-modelos", d.modelos.map(function(m){ return { nome: m.model, n: m.n }; }), "nome", "n", "aparelhos");
+    var total = d.sistemas.reduce(function(a, s){ return a + s.n; }, 0) || 1;
+    $("sistemas").innerHTML = d.sistemas.map(function(s){
+      var nome = s.sdk ? "Android " + apiParaAndroid(s.sdk) : "não informado";
+      return '<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;gap:12px">' +
+             '<span>' + nome + '</span><b>' + fmt(s.n) + '</b></div>' +
+             '<div class="meter"><i style="width:' + Math.round(s.n / total * 100) + '%"></i></div></div>';
+    }).join("");
+  }
+
+  /** O número da API não diz nada a quem dirige a igreja; a versão diz. */
+  function apiParaAndroid(sdk){
+    var m = { 21:"5.0", 22:"5.1", 23:"6", 24:"7", 25:"7.1", 26:"8", 27:"8.1", 28:"9",
+              29:"10", 30:"11", 31:"12", 32:"12L", 33:"13", 34:"14", 35:"15", 36:"16", 37:"17" };
+    return m[sdk] || ("API " + sdk);
+  }
+
+  /** Barras horizontais com rótulo à esquerda e valor na ponta. */
+  function barrasH(idBox, linhas, campoNome, campoValor, sufixo){
+    var box = $(idBox), tip = box.querySelector(".tip");
+    var old = box.querySelector("svg"); if (old) old.remove();
+    var vazio = box.querySelector("p.muted"); if (vazio) vazio.remove();
+    var vivos = linhas.filter(function(r){ return r[campoValor] > 0; });
+    if (!vivos.length) {
+      box.insertAdjacentHTML("afterbegin", '<p class="muted" style="padding:22px 0">Sem dados ainda.</p>');
+      return;
+    }
+    var W = Math.max(280, Math.round(box.clientWidth));
+    var L = Math.min(126, Math.round(W * .34)), R = 48, T = 6, band = 30, bh = 17;
+    var H = T + band * vivos.length + 6, pw = W - L - R;
+    var max = Math.max.apply(null, vivos.map(function(r){ return r[campoValor]; }));
+
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Barras horizontais." });
+    box.insertBefore(svg, tip);
+    vivos.forEach(function(r, i){
+      var yy = T + band * i + (band - bh) / 2, w = Math.max(2, r[campoValor] / max * pw);
+      var rot = String(r[campoNome]);
+      var t = el("text", { class: "axis", x: L - 8, y: yy + bh / 2 + 4, "text-anchor": "end" }, svg);
+      t.textContent = rot.length > 18 ? rot.slice(0, 17) + "…" : rot;
+      if (rot.length > 18) el("title", {}, t).textContent = rot;
+      el("path", { d: roundedRight(L, yy, w, bh, 4), fill: "var(--s1)" }, svg);
+      el("text", { class: "dlabel", x: L + w + 8, y: yy + bh / 2 + 4 }, svg).textContent = fmt(r[campoValor]);
+      var hit = el("rect", { x: L, y: T + band * i, width: pw + R - 6, height: band, fill: "transparent" }, svg);
+      hit.addEventListener("mouseenter", function(){
+        tipShow(tip, svg, box, L + w, yy, "<b>" + fmt(r[campoValor]) + " " + sufixo + "</b><em>" + rot + "</em>");
+      });
+      hit.addEventListener("mouseleave", function(){ tip.style.opacity = "0"; });
+    });
+  }
+
   /* ---------------- início ---------------- */
   if (token) carregar(true); else $("token").focus();
   setInterval(function(){ if (token && !$("app").hidden) carregar(false); }, 30000);
+  // Padrões varrem 30 dias: relê de dez em dez minutos, não a cada meio minuto.
+  setInterval(function(){ if (token && !$("app").hidden) carregarPadroes(); }, 600000);
 })();
 </script>
 </body>
