@@ -91,7 +91,7 @@ h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.02em;line-height:1
 
 table{width:100%;border-collapse:collapse;margin-top:12px}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
-th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:500;white-space:nowrap}
 td.num,th.num{text-align:right}
 /* A coluna dos botões recebe o que precisa; quem cede espaço é o texto. */
 td:last-child,th:last-child{white-space:nowrap;width:1%}
@@ -155,7 +155,10 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
 /* modal de municípios */
 .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(5,7,10,.62)}
 .modal[hidden]{display:none!important}
-.modal__box{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);width:min(660px,100%);max-height:82vh;display:flex;flex-direction:column}
+/* Largura pensada para a tabela de aparelhos: com 660px a coluna do botão
+   Remover caía fora da vista, e a ação principal ficava escondida no rolar. */
+.modal__box{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);width:min(980px,100%);max-width:100%;min-width:0;max-height:86vh;display:flex;flex-direction:column}
+.modal__body{min-width:0}
 .modal__top{display:flex;align-items:center;gap:14px;padding:20px 22px;border-bottom:1px solid var(--line-soft)}
 .modal__t{font-family:var(--display);font-weight:700;font-size:18px}
 .modal__body{overflow:auto;padding:6px 22px 22px}
