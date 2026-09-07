@@ -196,7 +196,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
       <div class="tiles" style="margin-top:20px">
         <div class="tile"><div class="tile__l">Pico de hoje</div><div class="tile__v" id="pico">—</div><div class="tile__d" id="picoHora">—</div></div>
         <div class="tile"><div class="tile__l">Tela ligada · média</div><div class="tile__v" id="tela">—</div><div class="tile__d">por aparelho, hoje</div></div>
-        <div class="tile"><div class="tile__l">Deram sinal hoje</div><div class="tile__v" id="hoje">—</div><div class="tile__d">de <span id="parque">—</span> cadastrados</div></div>
+        <div class="tile"><div class="tile__l">Deram sinal hoje</div><div class="tile__v" id="hoje">—</div><div class="tile__d">de <span id="parque-total">—</span> cadastrados</div></div>
         <div class="tile"><div class="tile__l">Quedas recuperadas</div><div class="tile__v" id="quedas">—</div><div class="tile__d">sozinhas, hoje</div></div>
         <div class="tile"><div class="tile__l">Televisões mudas</div><div class="tile__v" id="mudas">—</div><div class="tile__d">sem sinal há 2 dias</div></div>
       </div>
@@ -293,9 +293,12 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     <div class="card">
       <div class="card__t">O parque, aparelho por aparelho</div>
       <div class="card__s">Uma linha por televisão. Abrir e fechar o aplicativo soma <b>aberturas</b>, nunca aparelhos — se aparecer linha repetida do mesmo aparelho, é defeito e vale avisar.</div>
-      <div class="scroll-x"><table><thead><tr><th>Aparelho</th><th>Modelo</th><th>Onde</th><th>Versão</th><th class="num">Aberturas</th><th class="num">Tela ligada</th><th class="num">Visto</th><th></th></tr></thead><tbody id="parque"></tbody></table></div>
-      <span class="saved" id="devok"></span>
-      <p class="muted" style="font-size:11.5px;margin-top:12px">Remover apaga o aparelho e tudo que ele reportou. Use para caixa devolvida, aparelho de teste ou televisão trocada — número de audiência com lixo dentro é pior que número nenhum.</p>
+      <div id="parque-resumo" class="muted" style="margin-top:16px;font-size:13px">—</div>
+      <div class="row-actions">
+        <button type="button" class="btn btn--primary" id="abrir-parque">Ver os aparelhos</button>
+        <span class="saved" id="devok"></span>
+      </div>
+      <p class="muted" style="font-size:11.5px;margin-top:12px">A lista abre à parte e vem por página: com milhares de televisões, uma tabela solta no meio da página deixaria de caber em qualquer tela.</p>
     </div>
   </section>
 
@@ -449,7 +452,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     $("agora").firstChild.nodeValue = fmt(d.watchingNow);
     $("pico").textContent = fmt(d.peakToday);
     $("picoHora").textContent = d.peakAt ? "às " + relogio(d.peakAt) : "—";
-    $("parque").textContent = fmt(d.devicesTotal);
+    $("parque-total").textContent = fmt(d.devicesTotal);
     $("hoje").textContent = fmt(d.devicesActiveToday);
     $("mudas").textContent = fmt(d.quiet.length);
     $("stamp").textContent = "atualizado " + relogio(d.generatedAt);
@@ -936,31 +939,82 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     return api("/cities").then(function(r){ cidadesPorUf = r.byUf || {}; }).catch(function(){});
   }
 
+  var PAGINA = 50;
+  var parqueBusca = "", parqueLidos = 0, parqueTotal = 0;
+
   function carregarParque(){
-    return api("/admin/device").then(function(r){
+    // Na página fica só o resumo. A lista inteira mora no modal.
+    return api("/admin/device?limit=1").then(function(r){
+      parqueTotal = r.total || 0;
+      $("parque-resumo").textContent = parqueTotal
+        ? fmt(parqueTotal) + (parqueTotal === 1 ? " televisão cadastrada" : " televisões cadastradas")
+        : "Nenhum aparelho reportou ainda.";
+    }).catch(function(e){ flash("devok", e.message); });
+  }
+
+  function linhaAparelho(a, agora){
+    var idade = agora - a.last_seen;
+    var quando = idade < 3600 ? Math.max(1, Math.round(idade / 60)) + " min"
+               : idade < 86400 ? Math.round(idade / 3600) + " h"
+               : Math.round(idade / 86400) + " d";
+    var tocando = (agora - a.last_playing) < 750;
+    return '<tr><td class="tdmono muted" title="' + a.id + '">' + a.id.slice(0, 8) + '</td>' +
+           '<td>' + (a.model || "—") + (tocando ? ' <span class="pill pill--ok">assistindo</span>' : '') + '</td>' +
+           '<td>' + (a.uf || a.country || "—") +
+             (a.city ? ' <span class="muted">' + a.city + '</span>' : '') + '</td>' +
+           '<td>' + (a.version_name || "—") + '</td>' +
+           '<td class="num">' + fmt(a.sessions) + '</td>' +
+           '<td class="num">' + horas(a.screen_seconds) + '</td>' +
+           '<td class="num muted">há ' + quando + '</td>' +
+           '<td class="num"><button type="button" class="btn btn--danger" data-deldev="' + a.id + '">Remover</button></td></tr>';
+  }
+
+  function abrirParque(){
+    parqueBusca = ""; parqueLidos = 0;
+    $("modal-t").textContent = "Aparelhos";
+    $("modal-body").innerHTML =
+      '<div class="field" style="margin:6px 0 14px"><label for="q-parque">Buscar por modelo, estado, cidade, versão ou início do identificador</label>' +
+      '<input id="q-parque" placeholder="Xiaomi, SP, São Paulo, 2.5…"></div>' +
+      '<div class="scroll-x"><table><thead><tr><th>Aparelho</th><th>Modelo</th><th>Onde</th><th>Versão</th>' +
+      '<th class="num">Aberturas</th><th class="num">Tela ligada</th><th class="num">Visto</th><th></th></tr></thead>' +
+      '<tbody id="parque-corpo"></tbody></table></div>' +
+      '<div class="row-actions"><button type="button" class="btn" id="mais-parque" hidden>Mostrar mais</button>' +
+      '<span class="muted" id="parque-contagem" style="font-size:12px"></span></div>' +
+      '<p class="muted" style="font-size:11.5px;margin-top:12px">Remover apaga o aparelho e tudo que ele reportou. Use para caixa devolvida, aparelho de teste ou televisão trocada — número de audiência com lixo dentro é pior que número nenhum.</p>';
+    $("modal").hidden = false;
+
+    var t;
+    $("q-parque").addEventListener("input", function(){
+      clearTimeout(t);
+      t = setTimeout(function(){
+        parqueBusca = $("q-parque").value.trim();
+        parqueLidos = 0;
+        $("parque-corpo").innerHTML = "";
+        paginaParque();
+      }, 260);
+    });
+    $("mais-parque").addEventListener("click", paginaParque);
+    $("q-parque").focus();
+    paginaParque();
+  }
+
+  function paginaParque(){
+    var url = "/admin/device?limit=" + PAGINA + "&offset=" + parqueLidos +
+              (parqueBusca ? "&q=" + encodeURIComponent(parqueBusca) : "");
+    return api(url).then(function(r){
       var agora = Math.floor(Date.now() / 1000);
       var d = r.devices || [];
-      if (!d.length) {
-        $("parque").innerHTML = '<tr><td colspan="8" class="muted">Nenhum aparelho reportou ainda.</td></tr>';
-        return;
+      if (!parqueLidos && !d.length) {
+        $("parque-corpo").innerHTML = '<tr><td colspan="8" class="muted">' +
+          (parqueBusca ? "Nada encontrado para essa busca." : "Nenhum aparelho reportou ainda.") + '</td></tr>';
+      } else {
+        $("parque-corpo").insertAdjacentHTML("beforeend", d.map(function(a){ return linhaAparelho(a, agora); }).join(""));
       }
-      $("parque").innerHTML = d.map(function(a){
-        var idade = agora - a.last_seen;
-        var quando = idade < 3600 ? Math.max(1, Math.round(idade / 60)) + " min"
-                   : idade < 86400 ? Math.round(idade / 3600) + " h"
-                   : Math.round(idade / 86400) + " d";
-        var tocando = (agora - a.last_playing) < 750;
-        return '<tr><td class="tdmono muted">' + a.id.slice(0, 8) + '</td>' +
-               '<td>' + (a.model || "—") + (tocando ? ' <span class="pill pill--ok">assistindo</span>' : '') + '</td>' +
-               '<td>' + (a.uf || a.country || "—") +
-                 (a.city ? ' <span class="muted">' + a.city + '</span>' : '') + '</td>' +
-               '<td>' + (a.version_name || "—") + '</td>' +
-               '<td class="num">' + fmt(a.sessions) + '</td>' +
-               '<td class="num">' + horas(a.screen_seconds) + '</td>' +
-               '<td class="num muted">há ' + quando + '</td>' +
-               '<td class="num"><button type="button" class="btn btn--danger" data-deldev="' + a.id + '">Remover</button></td></tr>';
-      }).join("");
-    }).catch(function(e){ flash("devok", e.message); });
+      parqueLidos += d.length;
+      $("parque-contagem").textContent = parqueLidos + " de " + fmt(r.total) +
+        (parqueBusca ? " que batem com a busca" : "");
+      $("mais-parque").hidden = parqueLidos >= r.total;
+    }).catch(function(e){ $("parque-contagem").textContent = e.message; });
   }
 
   var UF_LISTA = Object.keys(UF_NOME).sort();
@@ -1045,10 +1099,15 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
         .catch(function(){ flash("chok", t.dataset.copiar); });
     }
     if (t.dataset && t.dataset.cidades) abrirCidades(t.dataset.cidades);
+    if (t.id === "abrir-parque") abrirParque();
     if (t.dataset && t.dataset.deldev) {
       if (!confirm("Remover este aparelho e tudo que ele reportou?")) return;
       api("/admin/device?id=" + t.dataset.deldev, { method: "DELETE" })
-        .then(function(){ flash("devok", "Aparelho removido."); return carregarParque(); })
+        .then(function(){
+          var tr = t.closest("tr"); if (tr) tr.remove();
+          parqueLidos = Math.max(0, parqueLidos - 1);
+          return carregarParque();
+        })
         .catch(function(e){ flash("devok", e.message); });
     }
     if (t.dataset && t.dataset.delpix) {

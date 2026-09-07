@@ -560,14 +560,43 @@ async function adminDevice(request, env, url) {
   if (!authorized(request, env)) return json({ error: "unauthorized" }, 401, env);
 
   if (request.method === "GET") {
-    const rows = await env.DB.prepare(`
-      SELECT id, model, uf, country, city, version_name, sessions, screen_seconds,
-             first_seen, last_seen, last_playing
-        FROM devices
-       ORDER BY last_seen DESC
-       LIMIT 200
-    `).all();
-    return json({ devices: rows.results || [] }, 200, env);
+    // Um parque grande não cabe numa resposta só, e ninguém lê mil linhas de
+    // uma vez: vem por página, com busca por modelo, estado, cidade ou pelo
+    // começo do identificador.
+    const q = String(url.searchParams.get("q") || "").trim().toLowerCase();
+    const limite = Math.min(200, Math.max(1, intOrNull(url.searchParams.get("limit")) || 50));
+    const pulo = Math.max(0, intOrNull(url.searchParams.get("offset")) || 0);
+    const like = "%" + q + "%";
+
+    const filtro = q
+      ? `WHERE lower(COALESCE(model,'')) LIKE ?1
+            OR lower(COALESCE(uf,'')) LIKE ?1
+            OR lower(COALESCE(city,'')) LIKE ?1
+            OR lower(COALESCE(country,'')) LIKE ?1
+            OR lower(COALESCE(version_name,'')) LIKE ?1
+            OR id LIKE ?1`
+      : "";
+
+    // .bind() só entra quando há filtro: um statement sem ?1 recusa parâmetro,
+    // e chamar bind por apply perderia o próprio statement como contexto.
+    const amarra = st => (q ? st.bind(like) : st);
+    const [linhas, conta] = await env.DB.batch([
+      amarra(env.DB.prepare(`
+        SELECT id, model, uf, country, city, version_name, sessions, screen_seconds,
+               first_seen, last_seen, last_playing
+          FROM devices ${filtro}
+         ORDER BY last_seen DESC
+         LIMIT ${limite} OFFSET ${pulo}
+      `)),
+      amarra(env.DB.prepare(`SELECT COUNT(*) AS n FROM devices ${filtro}`))
+    ]);
+
+    return json({
+      devices: linhas.results || [],
+      total: first(conta).n || 0,
+      offset: pulo,
+      limit: limite
+    }, 200, env);
   }
 
   if (request.method === "DELETE") {
