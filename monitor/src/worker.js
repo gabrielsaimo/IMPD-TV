@@ -115,10 +115,14 @@ async function probeSources(env) {
     });
   }
 
-  const resultados = await Promise.all(alvos.map(async a => {
-    try { return { a, r: await a.check() }; }
-    catch (e) { return { a, r: { ok: false, detail: String(e && e.message || e).slice(0, 120), items: 0 } }; }
-  }));
+  // Um de cada vez, e não em paralelo: o YouTube limita rajada de IP de
+  // datacenter, então dois canais pedidos no mesmo instante rendiam 429 no
+  // segundo — o próprio teste criando o alarme que ele mede.
+  const resultados = [];
+  for (const a of alvos) {
+    try { resultados.push({ a, r: await a.check() }); }
+    catch (e) { resultados.push({ a, r: { ok: false, detail: String(e && e.message || e).slice(0, 120), items: 0 } }); }
+  }
 
   await env.DB.batch(resultados.map(({ a, r }) => env.DB.prepare(`
     INSERT INTO sources (id, kind, label, checked_at, ok, last_ok, last_fail, detail, items, ok_count, fail_count)
@@ -180,14 +184,39 @@ async function probeStream() {
  * o teste está medindo — o monitor viraria a causa do alarme.
  */
 async function probeYoutube(channelId, env) {
-  const c = await env.DB.prepare(
+  const agora = Math.floor(Date.now() / 1000);
+  let c = await env.DB.prepare(
     "SELECT payload, fetched_at, ok, detail FROM video_cache WHERE channel_id = ?"
   ).bind(channelId).first();
 
-  if (!c) return { ok: false, detail: "nenhuma televisão pediu a fileira ainda", items: 0 };
+  // Cache velho não é saúde: dizer "no ar" com base numa leitura de três dias
+  // atrás é justamente o alarme que não toca quando devia. Se ninguém pediu a
+  // fileira nesse tempo, o próprio teste vai buscar — e de quebra deixa o
+  // cache quente para o primeiro aparelho que ligar.
+  const VELHO = 45 * 60;
+  if (!c || agora - c.fetched_at > VELHO) {
+    const nome = await env.DB.prepare("SELECT name FROM youtube_channels WHERE id = ?").bind(channelId).first();
+    try {
+      const lista = await lerCanal({ id: channelId, name: (nome && nome.name) || "" });
+      await env.DB.prepare(`
+        INSERT INTO video_cache (channel_id, payload, fetched_at, ok, detail)
+        VALUES (?1, ?2, ?3, 1, NULL)
+        ON CONFLICT(channel_id) DO UPDATE SET payload = ?2, fetched_at = ?3, ok = 1, detail = NULL
+      `).bind(channelId, JSON.stringify(lista), agora).run();
+      return { ok: true, detail: lista.length + " vídeos, lidos agora", items: lista.length };
+    } catch (e) {
+      const motivo = String(e && e.message || e).slice(0, 90);
+      await env.DB.prepare(`
+        INSERT INTO video_cache (channel_id, payload, fetched_at, ok, detail)
+        VALUES (?1, ?2, ?3, 0, ?4)
+        ON CONFLICT(channel_id) DO UPDATE SET fetched_at = ?3, ok = 0, detail = ?4
+      `).bind(channelId, c ? c.payload : "[]", agora, motivo).run();
+      return { ok: false, detail: motivo, items: 0 };
+    }
+  }
 
   const n = (() => { try { return JSON.parse(c.payload).length; } catch (e) { return 0; } })();
-  const idade = Math.floor(Date.now() / 1000) - c.fetched_at;
+  const idade = agora - c.fetched_at;
 
   if (c.ok) return { ok: true, detail: n + " vídeos, lidos há " + Math.round(idade / 60) + " min", items: n };
   return { ok: false, detail: (c.detail || "falha na leitura") + (n ? " (servindo " + n + " do cache)" : ""), items: n };

@@ -1176,10 +1176,26 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
       '<button type="button" class="btn" style="margin-top:14px" data-cidades="' + uf + '">Ver municípios de ' + uf + '</button>';
   }
 
-  var PAIS = {US:"Estados Unidos",PT:"Portugal",JP:"Japão",PY:"Paraguai",AR:"Argentina",
-    UY:"Uruguai",BO:"Bolívia",GB:"Reino Unido",ES:"Espanha",IT:"Itália",FR:"França",
-    DE:"Alemanha",CA:"Canadá",MX:"México",AO:"Angola",MZ:"Moçambique",CH:"Suíça",
-    IE:"Irlanda",AU:"Austrália",CL:"Chile",CO:"Colômbia","??":"Não identificado"};
+  /**
+   * O nome do país, em português, sem lista escrita à mão.
+   *
+   * A lista anterior tinha vinte e um países e a Tailândia não estava nela —
+   * a tabela mostrava "TH TH". Manter à mão uma lista de duzentos países é
+   * garantir que o próximo que aparecer também saia errado, e o navegador já
+   * sabe todos.
+   */
+  var NOMES_PAIS = (function(){
+    try { return new Intl.DisplayNames(["pt-BR"], { type: "region" }); }
+    catch (e) { return null; }
+  })();
+
+  function nomePais(cod){
+    if (!cod || cod === "??") return "Não identificado";
+    try {
+      var n = NOMES_PAIS && NOMES_PAIS.of(cod);
+      return n && n !== cod ? n : cod;
+    } catch (e) { return cod; }
+  }
 
   function foraDoBrasil(d){
     var tb = $("abroad");
@@ -1188,7 +1204,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     } else {
       tb.innerHTML = d.abroad.map(function(r){
         return '<tr data-pais="' + r.country + '" style="cursor:pointer">' +
-               '<td>' + (PAIS[r.country] || r.country) + ' <span class="muted">' + r.country + '</span></td>' +
+               '<td>' + nomePais(r.country) + ' <span class="muted">' + r.country + '</span></td>' +
                '<td class="num">' + fmt(r.devices) + '</td><td class="num">' + fmt(r.watching) + '</td>' +
                '<td class="num muted" style="font-size:10.5px">ver cidades</td></tr>';
       }).join("");
@@ -1221,7 +1237,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
           }).join("")
         : '<em style="opacity:.7">cidades ainda não identificadas</em>';
       var sobra = mun.length === 5 ? '<em style="opacity:.6">…clique para ver todas</em>' : "";
-      tip.innerHTML = "<b>" + (PAIS[pais] || pais) + "</b>" + lista + sobra;
+      tip.innerHTML = "<b>" + nomePais(pais) + "</b>" + lista + sobra;
 
       var r = tr.getBoundingClientRect(), b = caixa.getBoundingClientRect();
       tip.style.left = Math.min(Math.max(r.left - b.left + 120, 96), b.width - 96) + "px";
@@ -1233,7 +1249,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
 
   /** A lista inteira de um país, no mesmo modal que os municípios usam. */
   function abrirCidadesPais(pais){
-    $("modal-t").textContent = "Cidades — " + (PAIS[pais] || pais);
+    $("modal-t").textContent = "Cidades — " + nomePais(pais);
     $("modal-body").innerHTML = '<p class="muted" style="padding:18px 0">Carregando…</p>';
     $("modal").hidden = false;
     $("modal-x").focus();
