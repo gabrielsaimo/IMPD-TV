@@ -585,12 +585,12 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
       <div class="card__s">Os canais que alimentam a fileira de baixo. Desligar um tira ele da tela na abertura seguinte.</div>
       <div class="scroll-x"><table><thead><tr><th>Canal</th><th>Alcance</th><th>Estado</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
       <div class="addrow addrow--ch">
-        <div class="field"><label for="chid">ID do canal</label><input id="chid" placeholder="UCfb8GIF7etM7HaMmBJ150qg"></div>
-        <div class="field"><label for="chname">Nome</label><input id="chname" placeholder="Bispo Roberto Santana"></div>
+        <div class="field"><label for="chid">Canal</label><input id="chid" placeholder="@BispaFrancileiaofc"></div>
+        <div class="field"><label for="chname">Nome <span style="text-transform:none;letter-spacing:0">(opcional)</span></label><input id="chname" placeholder="deixe vazio e ele pega o do canal"></div>
         <div class="field"><label for="chscope">Alcance</label><select id="chscope"></select></div>
         <button type="button" class="btn" id="addch">Incluir</button>
       </div>
-      <p class="muted" style="font-size:11.5px;margin-top:10px">Nacional aparece em todo aparelho. Um estado aparece só nos aparelhos daquele estado, pela mesma leitura de região que escolhe a chave PIX.</p>
+      <p class="muted" style="font-size:11.5px;margin-top:10px">Cole o <b>@ do canal</b>, o endereço da barra do navegador ou o identificador — o painel descobre o resto sozinho, inclusive o nome. Nacional aparece em todo aparelho. Um estado aparece só nos aparelhos daquele estado, pela mesma leitura de região que escolhe a chave PIX.</p>
       <span class="saved" id="chok"></span>
     </div>
   </section>
@@ -1638,17 +1638,29 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     });
 
     $("addch").addEventListener("click", function(){
+      var colado = $("chid").value.trim();
+      if (!colado) { flash("chok", "Cole o @ do canal ou o endereço dele."); return; }
+
+      // Descobrir o canal exige buscar a página dele, o que leva um instante:
+      // sem aviso, quem clicou acha que o botão não funcionou e clica de novo.
+      var botao = $("addch"), rotulo = botao.textContent;
+      botao.disabled = true; botao.textContent = "Procurando…";
+
       api("/admin/channel", { method: "PUT", body: JSON.stringify({
-        id: $("chid").value.trim(), name: $("chname").value.trim(),
+        id: colado, name: $("chname").value.trim(),
         enabled: true, scope: $("chscope").value
-      })}).then(function(){
+      })}).then(function(r){
         $("chid").value = $("chname").value = "";
-        flash("chok", "Canal incluído. Entra na fileira na abertura seguinte.");
+        flash("chok", "Achou: " + r.name + " · " + r.id + ". Entra na fileira na abertura seguinte.");
         return carregarEditor();
       }).catch(function(e){
-        flash("chok", e.message === "id_invalido"
-          ? "O ID do canal tem de começar com UC e ter 24 caracteres."
-          : e.message);
+        flash("chok", e.message === "nao_resolveu"
+          ? "Não achei esse canal. Confira o @ ou cole o endereço da página dele."
+          : e.message === "id_invalido"
+            ? "O identificador do canal tem de começar com UC e ter 24 caracteres."
+            : e.message);
+      }).then(function(){
+        botao.disabled = false; botao.textContent = rotulo;
       });
     });
   }

@@ -801,12 +801,26 @@ async function adminChannel(request, env, url) {
 
   if (request.method === "PUT") {
     const body = await readJson(request);
-    const id = String(body.id || "").trim();
-    // Um id de canal do YouTube começa com UC e tem 24 caracteres. Aceitar
-    // qualquer coisa aqui põe a fileira de vídeos atrás de um feed que não
-    // existe, e a televisão mostra "não foi possível carregar" sem motivo.
+    const colado = String(body.id || "").trim();
+
+    // Aceita identificador, arroba ou endereço colado da barra do navegador:
+    // quem cadastra um canal tem o @ à mão, não o UC de vinte e quatro letras.
+    let id = "", nomeAchado = "";
+    const jaEId = /^UC[A-Za-z0-9_-]{22}$/.test(colado);
+    try {
+      const r = await resolverCanal(colado);
+      id = r.id;
+      nomeAchado = r.name;
+    } catch (e) {
+      // Identificador correto que o YouTube não respondeu na hora ainda serve:
+      // o que falhou foi descobrir o nome, e nome o painel sabe pedir.
+      if (!jaEId) return json({ error: "nao_resolveu", detalhe: String(e && e.message || e) }, 400, env);
+      id = colado;
+    }
     if (!/^UC[A-Za-z0-9_-]{22}$/.test(id)) return json({ error: "id_invalido" }, 400, env);
-    const name = strOrNull(body.name);
+
+    // O nome digitado manda; sem ele, vale o que o próprio canal se chama.
+    const name = strOrNull(body.name) || strOrNull(nomeAchado);
     if (!name) return json({ error: "nome_obrigatorio" }, 400, env);
     // "BR" é nacional; qualquer outra coisa tem de ser uma UF de verdade, ou o
     // canal sumiria de todas as televisões sem ninguém entender por quê.
@@ -818,7 +832,7 @@ async function adminChannel(request, env, url) {
       ON CONFLICT(id) DO UPDATE SET name = ?2, enabled = ?3, position = ?4, scope = ?6
     `).bind(id, name, body.enabled === false ? 0 : 1,
             intOrNull(body.position) || 0, Math.floor(Date.now() / 1000), scope).run();
-    return json({ ok: true }, 200, env);
+    return json({ ok: true, id: id, name: name }, 200, env);
   }
 
   if (request.method === "DELETE") {
@@ -1213,6 +1227,81 @@ async function insights(request, env, url) {
     picos: picos.results || [],
     medianaHoje: mediana && mediana.m ? Math.round(mediana.m) : 0
   }, 200, env);
+}
+/**
+ * Descobre o canal a partir do que a pessoa colou.
+ *
+ * Ninguém tem o identificador `UCfb8GIF7etM7HaMmBJ150qg` à mão — o que se tem
+ * é o `@arroba` ou o endereço copiado da barra do navegador. A tradução é
+ * feita aqui, do lado do servidor, porque a página do canal não responde a
+ * pedido feito do navegador de outra origem.
+ *
+ * Aceita as quatro formas que aparecem na prática:
+ *   UCfb8GIF7etM7HaMmBJ150qg
+ *   @BispaFranciléiaofc
+ *   https://www.youtube.com/@BispaFranciléiaofc
+ *   https://www.youtube.com/channel/UCfb8GIF7etM7HaMmBJ150qg
+ *
+ * Devolve também o nome do canal, para quem cadastra não precisar digitar.
+ */
+async function resolverCanal(entrada) {
+  const cru = String(entrada || "").trim();
+  if (!cru) throw new Error("nada informado");
+
+  // Já é o identificador, esteja solto ou dentro de um endereço.
+  const direto = cru.match(/(UC[A-Za-z0-9_-]{22})/);
+  if (direto) {
+    const nome = await nomeDoCanal("channel/" + direto[1]);
+    return { id: direto[1], name: nome };
+  }
+
+  // Tira o endereço em volta, se houver, e fica com o último pedaço.
+  let alvo = cru;
+  const url = cru.match(/youtube\.com\/(.+)$/i);
+  if (url) alvo = url[1].split(/[?#]/)[0].replace(/\/+$/, "");
+  if (alvo.indexOf("@") !== 0 && alvo.indexOf("/") < 0) alvo = "@" + alvo;
+
+  const achado = await paginaDoCanal(alvo);
+  if (!achado) throw new Error("canal não encontrado");
+  return achado;
+}
+
+const UA_YT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+async function paginaDoCanal(caminho) {
+  // O arroba pode ter acento, e a barra de endereço aceita isso cru — mas a
+  // requisição não. Cada pedaço vai codificado em separado para a barra que
+  // separa "channel/ID" não virar %2F.
+  const seguro = caminho.split("/").map(encodeURIComponent).join("/");
+  const r = await fetch("https://www.youtube.com/" + seguro, {
+    headers: { "User-Agent": UA_YT, "Accept-Language": "pt-BR,pt;q=0.9" }
+  });
+  if (!r.ok) return null;
+  const html = await r.text();
+
+  const id = (html.match(/"externalId":"(UC[A-Za-z0-9_-]{22})"/) ||
+              html.match(/channel\/(UC[A-Za-z0-9_-]{22})/) || [])[1];
+  if (!id) return null;
+
+  const nome = (html.match(/<meta property="og:title" content="([^"]*)"/) || [])[1] || "";
+  return { id: id, name: decodeHtml(nome).slice(0, 120) };
+}
+
+async function nomeDoCanal(caminho) {
+  try {
+    const a = await paginaDoCanal(caminho);
+    return a ? a.name : "";
+  } catch (e) { return ""; }
+}
+
+/** O og:title vem com entidade HTML; o nome guardado tem de vir limpo. */
+function decodeHtml(s) {
+  return String(s)
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 }
 /* ------------------------------------------------------------------ */
 /* Apoio                                                               */
