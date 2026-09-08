@@ -601,7 +601,7 @@ select:hover{border-color:var(--ink-3)}
     <div class="card">
       <div class="card__t">Fontes de vídeo do YouTube</div>
       <div class="card__s">Os canais que alimentam a fileira de baixo. Desligar um tira ele da tela na abertura seguinte.</div>
-      <div class="scroll-x"><table><thead><tr><th>Canal</th><th>Alcance</th><th>Estado</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
+      <div class="scroll-x"><table><thead><tr><th>Canal</th><th>Alcance</th><th>No painel</th><th>Resposta</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
       <div class="addrow addrow--ch">
         <div class="field"><label for="chid">Canal</label><input id="chid" placeholder="@BispaFrancileiaofc"></div>
         <div class="field"><label for="chname">Nome <span style="text-transform:none;letter-spacing:0">(opcional)</span></label><input id="chname" placeholder="deixe vazio e ele pega o do canal"></div>
@@ -843,6 +843,7 @@ select:hover{border-color:var(--ink-3)}
     foraDoBrasil(d);
     listaVideos(d);
     fontes(d);
+    atualizarSaudeCanais();
   }
 
   /* ---------------- gráficos ----------------
@@ -1481,6 +1482,30 @@ select:hover{border-color:var(--ink-3)}
            '" data-name="' + nome + '" data-en="' + (ligado ? 1 : 0) + '">' + o + '</select>';
   }
 
+  /**
+   * O estado de resposta de um canal, lido do mesmo teste que alimenta o
+   * cartão de fontes. Sem isto a tabela mostrava só a configuração, e as duas
+   * telas discordavam sobre o mesmo canal.
+   */
+  function chipSaude(canalId, ligado){
+    if (!ligado) return '<span class="muted" style="font-size:10.5px">não é consultado</span>';
+    var f = ((ultimo && ultimo.sources) || []).filter(function(x){ return x.id === "youtube:" + canalId; })[0];
+    if (!f || f.ok === null || f.ok === undefined) return '<span class="pill pill--warn">nunca checado</span>';
+    return f.ok
+      ? '<span class="pill pill--ok">no ar</span>'
+      : '<span class="pill pill--danger" title="' + (f.detail || "") + '">fora do ar</span>';
+  }
+
+  /** Mantém a coluna viva: o teste roda a cada 5 min, o editor não recarrega. */
+  function atualizarSaudeCanais(){
+    document.querySelectorAll('[id^="saude-"]').forEach(function(td){
+      var id = td.id.slice(6);
+      var lin = td.closest("tr");
+      var sel = lin && lin.querySelector("[data-scope]");
+      td.innerHTML = chipSaude(id, !sel || sel.dataset.en === "1");
+    });
+  }
+
   function carregarEditor(){
     return api("/admin/state").then(function(st){
       var cfg = {};
@@ -1521,7 +1546,11 @@ select:hover{border-color:var(--ink-3)}
                  c.name + '</a>' +
                  '<div class="chid" title="' + c.id + '" data-copiar="' + c.id + '">' + c.id + '</div></td>' +
                '<td>' + opcoesAlcance('sc_' + c.id, c.scope || "BR", c.id, esc, c.enabled) + '</td>' +
-               '<td>' + (c.enabled ? '<span class="pill pill--ok">no ar</span>' : '<span class="pill pill--warn">desligado</span>') + '</td>' +
+               // "Ligado" é configuração; "no ar" é resposta. Usar a mesma
+               // palavra para as duas fazia a tabela dizer que o canal estava
+               // no ar enquanto o cartão ao lado dizia que estava fora.
+               '<td>' + (c.enabled ? '<span class="pill pill--ok">ligado</span>' : '<span class="pill pill--warn">desligado</span>') + '</td>' +
+               '<td id="saude-' + c.id + '">' + chipSaude(c.id, c.enabled) + '</td>' +
                '<td class="num"><button type="button" class="btn" data-togch="' + c.id + '" data-name="' +
                  c.name.replace(/"/g, "&quot;") + '" data-en="' + (c.enabled ? 1 : 0) + '">' +
                  (c.enabled ? "Desligar" : "Ligar") + '</button> ' +
