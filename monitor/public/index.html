@@ -278,8 +278,8 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
    propósito: o que se lê aqui é a mancha, não o número de cada hora. */
 /* O cartão corta o que passa da borda, então quem rola é o mapa: no celular
    vinte e quatro colunas não cabem, e cortar esconderia justamente as horas
-   do culto da noite. */
-#ritmo{overflow-x:auto;margin-top:18px;padding-bottom:4px}
+   do fim do dia. */
+#ritmo{overflow-x:auto;margin-top:18px;padding-bottom:4px;position:relative}
 .ritmo{display:grid;grid-template-columns:auto repeat(24,1fr);gap:2px}
 .ritmo > *{min-width:0}
 @media (max-width:760px){.ritmo{min-width:560px}}
@@ -384,12 +384,12 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
         <div class="tile"><div class="tile__l">Tela ligada · média</div><div class="tile__v" id="tela">—</div><div class="tile__d">por aparelho, hoje</div></div>
         <div class="tile"><div class="tile__l">Deram sinal hoje</div><div class="tile__v" id="hoje">—</div><div class="tile__d">de <span id="parque-total">—</span> cadastrados</div></div>
         <div class="tile"><div class="tile__l">Quedas recuperadas</div><div class="tile__v" id="quedas">—</div><div class="tile__d">sozinhas, hoje</div></div>
-        <div class="tile"><div class="tile__l">Televisões mudas</div><div class="tile__v" id="mudas">—</div><div class="tile__d">sem sinal há 2 dias</div></div>
+        <div class="tile"><div class="tile__l">Aparelhos mudos</div><div class="tile__v" id="mudas">—</div><div class="tile__d">sem sinal há 2 dias</div></div>
       </div>
     </div>
   </section>
 
-  <h2 class="group"><span>Audiência</span><small>quantas televisões estão ligadas, e no quê</small></h2>
+  <h2 class="group"><span>Audiência</span><small>quantos aparelhos estão ligados, e no quê</small></h2>
   <section class="grid cols-3">
     <div class="card">
       <div class="card__head">
@@ -412,10 +412,10 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     </div>
   </section>
 
-  <h2 class="group"><span>Onde estão</span><small>a região manda na chave PIX de cada aparelho</small></h2>
+  <h2 class="group"><span>Onde estão</span><small>a região decide a chave PIX de cada aparelho</small></h2>
   <section class="grid cols-3">
     <div class="card">
-      <div class="card__t">Onde estão as televisões</div>
+      <div class="card__t">Onde estão os aparelhos</div>
       <div class="card__s">Passe o mouse num estado para ver os números dele</div>
       <div class="ufgrid" id="ufgrid" role="group" aria-label="Estados do Brasil"></div>
       <div class="ramp">
@@ -426,8 +426,8 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
       <div class="ufdet" id="ufdet" aria-live="polite"></div>
     </div>
     <div class="card">
-      <div class="card__t">Aparelhos por gerência</div>
-      <div class="card__s">Onde as televisões estão — e qual chave PIX cada uma mostra</div>
+      <div class="card__t">Aparelhos por estado</div>
+      <div class="card__s">Onde os aparelhos estão — e qual chave PIX cada um mostra</div>
       <div class="chart" id="c-uf"><div class="tip"></div></div>
     </div>
   </section>
@@ -435,7 +435,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
   <section class="grid cols-3">
     <div class="card">
       <div class="card__t">Fora do Brasil</div>
-      <div class="card__s">Aparelhos que a borda localizou em outro país — a gaveta de doação deles mostra a chave nacional</div>
+      <div class="card__s">Aparelhos localizados em outro país — a gaveta de doação deles mostra a chave nacional</div>
       <div class="scroll-x"><table><thead><tr><th>País</th><th class="num">Aparelhos</th><th class="num">Assistindo</th></tr></thead><tbody id="abroad"></tbody></table></div>
       <p class="muted" style="font-size:11.5px;margin-top:12px" id="semuf"></p>
     </div>
@@ -446,16 +446,16 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     </div>
   </section>
 
-  <h2 class="group"><span>Conteúdo</span><small>o que o fiel escolheu, e se as fontes respondem</small></h2>
+  <h2 class="group"><span>Conteúdo</span><small>o que o espectador escolheu, e se as fontes respondem</small></h2>
   <section class="grid cols-3">
     <div class="card">
       <div class="card__t">Vídeos abertos</div>
-      <div class="card__s">Quais pregações o fiel escolheu na fileira, e quantas vezes</div>
+      <div class="card__s">Quais vídeos o espectador escolheu na fileira, e quantas vezes</div>
       <div class="scroll-x"><table><thead><tr><th>Vídeo</th><th>Canal</th><th class="num">Aberturas</th><th class="num">Último</th></tr></thead><tbody id="videos"></tbody></table></div>
     </div>
     <div class="card">
       <div class="card__t">Fontes no ar</div>
-      <div class="card__s">O painel pergunta direto a cada 5 minutos, e as televisões avisam quando não conseguem ler</div>
+      <div class="card__s">O painel pergunta direto a cada 5 minutos, e os aparelhos avisam quando não conseguem ler</div>
       <div id="fontes"></div>
     </div>
   </section>
@@ -468,8 +468,8 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
       <div id="versoes"></div>
     </div>
     <div class="card">
-      <div class="card__t">Televisões mudas</div>
-      <div class="card__s">Cadastradas, mas sem dar sinal há mais de dois dias</div>
+      <div class="card__t">Aparelhos mudos</div>
+      <div class="card__s">Cadastrados, mas sem dar sinal há mais de dois dias</div>
       <div class="scroll-x"><table><thead><tr><th>Aparelho</th><th>UF</th><th>Versão</th><th class="num">Sem sinal há</th></tr></thead><tbody id="quietas"></tbody></table></div>
     </div>
   </section>
@@ -479,8 +479,8 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     <div class="card">
       <div class="card__head">
         <div>
-          <div class="card__t">O ritmo da congregação</div>
-          <div class="card__s">Média de televisões ligadas em cada hora de cada dia, nos últimos 30 dias</div>
+          <div class="card__t">Ritmo de audiência</div>
+          <div class="card__s">Média de aparelhos ligados em cada hora de cada dia, nos últimos 30 dias</div>
         </div>
       </div>
       <div id="ritmo"></div>
@@ -493,7 +493,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
         <div class="tile"><div class="tile__l">Horário mais forte</div><div class="tile__v" id="p-hora">—</div><div class="tile__d" id="p-hora-d">—</div></div>
         <div class="tile"><div class="tile__l">Dia mais forte</div><div class="tile__v" id="p-dia">—</div><div class="tile__d" id="p-dia-d">—</div></div>
         <div class="tile"><div class="tile__l">Tela ligada · mediana</div><div class="tile__v" id="p-mediana">—</div><div class="tile__d">metade assiste menos que isso</div></div>
-        <div class="tile"><div class="tile__l">Novas em 7 dias</div><div class="tile__v" id="p-novas">—</div><div class="tile__d">televisões que entraram</div></div>
+        <div class="tile"><div class="tile__l">Novas em 7 dias</div><div class="tile__v" id="p-novas">—</div><div class="tile__d">aparelhos que entraram</div></div>
       </div>
     </div>
   </section>
@@ -501,7 +501,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
   <section class="grid cols-3">
     <div class="card">
       <div class="card__t">Crescimento do parque</div>
-      <div class="card__s">Televisões que deram o primeiro sinal, dia a dia</div>
+      <div class="card__s">Aparelhos que deram o primeiro sinal, dia a dia</div>
       <div class="chart" id="c-cresce"><div class="tip"></div></div>
     </div>
     <div class="card">
@@ -514,13 +514,13 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
 
   <section class="grid cols-3">
     <div class="card">
-      <div class="card__t">Quanto tempo a televisão fica ligada</div>
+      <div class="card__t">Quanto tempo o aparelho fica ligado</div>
       <div class="card__s">Aparelhos por faixa de tempo, nos últimos 7 dias — a média sozinha esconde isso</div>
       <div class="chart" id="c-faixas"><div class="tip"></div></div>
     </div>
     <div class="card">
       <div class="card__t">Hardware em campo</div>
-      <div class="card__s">Que aparelho a igreja tem instalado, e em qual Android</div>
+      <div class="card__s">Que aparelho está instalado, e em qual Android</div>
       <div class="chart" id="c-modelos"><div class="tip"></div></div>
       <div id="sistemas" style="margin-top:16px"></div>
     </div>
@@ -529,30 +529,30 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
   <section class="grid">
     <div class="card">
       <div class="card__t">Quedas de sinal recuperadas sozinhas</div>
-      <div class="card__s">Por dia. É a saúde da rede na casa do fiel, que teste feito daqui não enxerga.</div>
+      <div class="card__s">Por dia. É a saúde da rede na ponta, que teste feito daqui não enxerga.</div>
       <div class="chart" id="c-quedas"><div class="tip"></div></div>
     </div>
   </section>
 
-  <h2 class="group"><span>O parque</span><small>uma linha por televisão</small></h2>
+  <h2 class="group"><span>O parque</span><small>uma linha por aparelho</small></h2>
   <section class="grid ">
     <div class="card">
       <div class="card__t">O parque, aparelho por aparelho</div>
-      <div class="card__s">Uma linha por televisão. Abrir e fechar o aplicativo soma <b>aberturas</b>, nunca aparelhos — se aparecer linha repetida do mesmo aparelho, é defeito e vale avisar.</div>
+      <div class="card__s">Uma linha por aparelho. Abrir e fechar o aplicativo soma <b>aberturas</b>, nunca aparelhos — se aparecer linha repetida do mesmo aparelho, é defeito e vale avisar.</div>
       <div id="parque-resumo" class="muted" style="margin-top:16px;font-size:13px">—</div>
       <div class="row-actions">
         <button type="button" class="btn btn--primary" id="abrir-parque">Ver os aparelhos</button>
         <span class="saved" id="devok"></span>
       </div>
-      <p class="muted" style="font-size:11.5px;margin-top:12px">A lista abre à parte e vem por página: com milhares de televisões, uma tabela solta no meio da página deixaria de caber em qualquer tela.</p>
+      <p class="muted" style="font-size:11.5px;margin-top:12px">A lista abre à parte e vem por página: com milhares de aparelhos, uma tabela solta no meio da página deixaria de caber em qualquer tela.</p>
     </div>
   </section>
 
-  <h2 class="group"><span>Configuração</span><small>o que está aqui manda na tela das televisões</small></h2>
+  <h2 class="group"><span>Configuração</span><small>o que está aqui manda na tela dos aparelhos</small></h2>
   <section class="grid ">
     <div class="card">
       <div class="card__t">Configuração do aplicativo</div>
-      <div class="card__s">O que está aqui manda na tela das televisões. Elas pegam na abertura seguinte — sem aplicativo novo.</div>
+      <div class="card__s">O que está aqui manda na tela dos aparelhos. Eles pegam na abertura seguinte — sem aplicativo novo.</div>
       <div class="form" id="cfgform"></div>
       <div class="row-actions">
         <button type="button" class="btn btn--primary" id="salvarcfg">Salvar configuração</button>
@@ -563,13 +563,13 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
 
   <section class="grid">
     <div class="card">
-      <div class="card__t">Chaves PIX por gerência</div>
-      <div class="card__s">A oferta dada naquele estado entra na conta daquela regional. Estado sem chave cai na nacional.</div>
-      <div class="scroll-x"><table><thead><tr><th>UF</th><th>Chave</th><th>Gerência</th><th class="num">Aparelhos</th><th></th></tr></thead><tbody id="pix"></tbody></table></div>
+      <div class="card__t">Chaves PIX por região</div>
+      <div class="card__s">A doação feita naquele estado entra na conta daquela região. Estado sem chave cai na nacional.</div>
+      <div class="scroll-x"><table><thead><tr><th>UF</th><th>Chave</th><th>Região</th><th class="num">Aparelhos</th><th></th></tr></thead><tbody id="pix"></tbody></table></div>
       <div class="addrow">
         <div class="field"><label for="pixuf">UF</label><input id="pixuf" maxlength="2" placeholder="AM"></div>
         <div class="field"><label for="pixkey">Chave</label><input id="pixkey" placeholder="pixam@impd.org.br"></div>
-        <div class="field"><label for="pixlabel">Gerência</label><input id="pixlabel" placeholder="Gerência Amazonas"></div>
+        <div class="field"><label for="pixlabel">Região</label><input id="pixlabel" placeholder="Amazonas"></div>
         <button type="button" class="btn" id="addpix">Incluir</button>
       </div>
       <span class="saved" id="pixok"></span>
@@ -579,7 +579,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
   <section class="grid">
     <div class="card">
       <div class="card__t">Fontes de vídeo do YouTube</div>
-      <div class="card__s">Os canais que alimentam a fileira de baixo. Desligar um tira ele da televisão na abertura seguinte.</div>
+      <div class="card__s">Os canais que alimentam a fileira de baixo. Desligar um tira ele da tela na abertura seguinte.</div>
       <div class="scroll-x"><table><thead><tr><th>Canal</th><th>Alcance</th><th>Estado</th><th></th></tr></thead><tbody id="canais"></tbody></table></div>
       <div class="addrow addrow--ch">
         <div class="field"><label for="chid">ID do canal</label><input id="chid" placeholder="UCfb8GIF7etM7HaMmBJ150qg"></div>
@@ -587,7 +587,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
         <div class="field"><label for="chscope">Alcance</label><select id="chscope"></select></div>
         <button type="button" class="btn" id="addch">Incluir</button>
       </div>
-      <p class="muted" style="font-size:11.5px;margin-top:10px">Nacional aparece em toda televisão. Um estado aparece só nas televisões daquele estado, pela mesma leitura de região que escolhe a chave PIX.</p>
+      <p class="muted" style="font-size:11.5px;margin-top:10px">Nacional aparece em todo aparelho. Um estado aparece só nos aparelhos daquele estado, pela mesma leitura de região que escolhe a chave PIX.</p>
       <span class="saved" id="chok"></span>
     </div>
   </section>
@@ -1027,8 +1027,8 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
   }
 
   var NOMES = {
-    open_pix: "Doação por PIX", open_prayer: "Pedidos de oração",
-    open_videos: "Últimos vídeos", open_info: "A igreja",
+    open_pix: "Doação por PIX", open_prayer: "Contato",
+    open_videos: "Últimos vídeos", open_info: "Institucional",
     video_open: "Vídeo aberto", reconnect: "Queda recuperada",
     wifi_prompt: "Tela de Wi-Fi", update_offered: "Atualização oferecida",
     update_started: "Atualização baixada", update_done: "Atualização instalada"
@@ -1066,7 +1066,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
   function quietas(d){
     var tb = $("quietas");
     if (!d.quiet.length) {
-      tb.innerHTML = '<tr><td colspan="4" class="muted">Nenhuma. Todas as televisões deram sinal nas últimas 48&nbsp;horas.</td></tr>';
+      tb.innerHTML = '<tr><td colspan="4" class="muted">Nenhum. Todos os aparelhos deram sinal nas últimas 48&nbsp;horas.</td></tr>';
       return;
     }
     var agora = d.generatedAt;
@@ -1169,7 +1169,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
       '<dt>Assistindo agora</dt><dd>' + fmt(r ? r.watching : 0) + '</dd>' +
       '<dt>Tela ligada · média</dt><dd>' + (r && r.avg_screen ? horas(r.avg_screen) : "—") + '</dd>' +
       '<dt>Chave PIX exibida</dt><dd class="tdmono">' + chave + '</dd>' +
-      '<dt>Gerência</dt><dd>' + ger + '</dd></dl>' +
+      '<dt>Região</dt><dd>' + ger + '</dd></dl>' +
       '<button type="button" class="btn" style="margin-top:14px" data-cidades="' + uf + '">Ver municípios de ' + uf + '</button>';
   }
 
@@ -1223,7 +1223,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
         : "";
       var reclam = f.device_fails
         ? '<div style="font-size:11.5px;color:var(--warn);margin-top:4px">' + fmt(f.device_fails) +
-          ' televisão(ões) não conseguiram ler esta fonte</div>' : "";
+          ' aparelho(s) não conseguiram ler esta fonte</div>' : "";
       return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">' +
              '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">' +
              '<span>' + (f.label || f.id) + '</span>' + pill + '</div>' +
@@ -1238,7 +1238,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
   var CFG_CAMPOS = [
     ["channel_name",      "Nome do canal",            "text"],
     ["pix_national",      "Chave PIX nacional",       "text"],
-    ["prayer_phone",      "Central de oração",        "text"],
+    ["prayer_phone",      "Telefone principal",       "text"],
     ["prayer_phone_2",    "Segunda linha",            "text"],
     ["whatsapp",          "WhatsApp (vazio = usar telefone)", "text"],
     ["bank_name",         "Banco",                    "text"],
@@ -1297,7 +1297,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     return api("/admin/device?limit=1").then(function(r){
       parqueTotal = r.total || 0;
       $("parque-resumo").textContent = parqueTotal
-        ? fmt(parqueTotal) + (parqueTotal === 1 ? " televisão cadastrada" : " televisões cadastradas")
+        ? fmt(parqueTotal) + (parqueTotal === 1 ? " aparelho cadastrado" : " aparelhos cadastrados")
         : "Nenhum aparelho reportou ainda.";
     }).catch(function(e){ flash("devok", e.message); });
   }
@@ -1330,7 +1330,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
       '<tbody id="parque-corpo"></tbody></table></div>' +
       '<div class="row-actions"><button type="button" class="btn" id="mais-parque" hidden>Mostrar mais</button>' +
       '<span class="muted" id="parque-contagem" style="font-size:12px"></span></div>' +
-      '<p class="muted" style="font-size:11.5px;margin-top:12px">Remover apaga o aparelho e tudo que ele reportou. Use para caixa devolvida, aparelho de teste ou televisão trocada — número de audiência com lixo dentro é pior que número nenhum.</p>';
+      '<p class="muted" style="font-size:11.5px;margin-top:12px">Remover apaga o aparelho e tudo que ele reportou. Use para aparelho devolvido, de teste ou trocado — número de audiência com lixo dentro é pior que número nenhum.</p>';
     $("modal").hidden = false;
 
     var t;
@@ -1387,7 +1387,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
 
       $("cfgform").innerHTML = CFG_CAMPOS.map(function(c){
         var bruto = cfg[c[0]] == null ? "" : String(cfg[c[0]]);
-        // Ninguém na liderança da igreja vai digitar epoch. O campo é um
+        // Ninguém que opera o painel vai digitar epoch. O campo é um
         // seletor de data e hora, e a conversão acontece aqui.
         var tipo = c[2] === "datetime" ? "datetime-local" : c[2];
         var v = c[2] === "datetime" ? epochParaInput(bruto) : bruto;
@@ -1516,7 +1516,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
                  '<td class="num">' + fmt(m.watching) + '</td>' +
                  '<td class="num">' + (m.avg_screen ? horas(m.avg_screen) : "—") + '</td></tr>';
         }).join("") + '</tbody></table>' +
-        '<p class="muted" style="font-size:11.5px;margin-top:14px">Cidade aproximada da conexão. Às vezes é onde a operadora tem o ponto de presença, e não onde a televisão está — serve para ver concentração, não como cadastro de endereço.</p>';
+        '<p class="muted" style="font-size:11.5px;margin-top:14px">Cidade aproximada da conexão. Às vezes é onde a operadora tem o ponto de presença, e não onde o aparelho está — serve para ver concentração, não como cadastro de endereço.</p>';
     }).catch(function(e){
       $("modal-body").innerHTML = '<p class="muted" style="padding:18px 0">Não deu para carregar: ' + e.message + '</p>';
     });
@@ -1537,7 +1537,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
           return { k: i.dataset.k, v: i.dataset.tipo === "datetime" ? inputParaEpoch(i.value) : i.value };
         });
       api("/admin/config", { method: "PUT", body: JSON.stringify({ entries: entries }) })
-        .then(function(){ flash("cfgok", "Salvo. As televisões pegam na abertura seguinte."); })
+        .then(function(){ flash("cfgok", "Salvo. Os aparelhos pegam na abertura seguinte."); })
         .catch(function(e){ flash("cfgok", e.message); });
     });
 
@@ -1573,7 +1573,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
      dez minutos, não junto com o "agora" de trinta em trinta segundos. */
   var DIAS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
   var DIAS_CURTO = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
-  var NOME_EV = { open_pix:"Doação por PIX", open_prayer:"Pedidos de oração", open_videos:"Últimos vídeos" };
+  var NOME_EV = { open_pix:"Doação por PIX", open_prayer:"Contato", open_videos:"Últimos vídeos" };
   var SERIE_EV = ["open_pix","open_prayer","open_videos"];
 
   function carregarPadroes(){
@@ -1607,12 +1607,46 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
         var c = celula[dw + ":" + hh];
         var v = c ? c.media : 0;
         var nivel = !max ? 1 : v === 0 ? 1 : Math.min(6, 1 + Math.ceil(v / max * 5));
-        var titulo = DIAS[dw] + ", " + (hh < 10 ? "0" + hh : hh) + "h — " +
-          (c ? fmt(v) + " em média, pico de " + fmt(c.pico) : "sem medição");
-        html += '<div class="ritmo__c" style="background:var(--ramp-' + nivel + ')" title="' + titulo + '"></div>';
+        html += '<div class="ritmo__c" style="background:var(--ramp-' + nivel + ')"' +
+                ' data-dow="' + dw + '" data-h="' + hh + '"' +
+                ' data-media="' + v + '" data-pico="' + (c ? c.pico : 0) + '"' +
+                ' data-tem="' + (c ? 1 : 0) + '"></div>';
       }
     }
-    $("ritmo").innerHTML = html + "</div>";
+    $("ritmo").innerHTML = html + '</div><div class="tip" id="tip-ritmo"></div>';
+    ligarTipRitmo();
+  }
+
+  /**
+   * Balãozinho próprio para o mapa.
+   *
+   * O atributo `title` é do navegador e leva quase um segundo para aparecer.
+   * Num mapa que se lê passando o mouse pelas horas, esperar a cada célula
+   * torna a leitura inútil — então o balãozinho é desenhado aqui e responde no
+   * mesmo quadro.
+   */
+  function ligarTipRitmo(){
+    var caixa = $("ritmo"), tip = $("tip-ritmo");
+    if (!caixa || !tip) return;
+
+    caixa.addEventListener("mouseover", function(ev){
+      var c = ev.target.closest(".ritmo__c");
+      if (!c) return;
+      var h = Number(c.dataset.h);
+      var corpo = c.dataset.tem === "1"
+        ? "<em>" + fmt(c.dataset.media) + " em média · pico de " + fmt(c.dataset.pico) + "</em>"
+        : "<em>sem medição neste horário</em>";
+      tip.innerHTML = "<b>" + DIAS[Number(c.dataset.dow)] + ", " + (h < 10 ? "0" + h : h) + "h</b>" + corpo;
+
+      var r = c.getBoundingClientRect(), b = caixa.getBoundingClientRect();
+      // Preso ao quadro do mapa: encostado na borda, o balãozinho iria para
+      // fora da tela e ficaria cortado pelo cartão.
+      var x = Math.min(Math.max(r.left - b.left + caixa.scrollLeft + r.width / 2, 78), caixa.scrollWidth - 78);
+      tip.style.left = x + "px";
+      tip.style.top = (r.top - b.top + caixa.scrollTop) + "px";
+      tip.style.opacity = "1";
+    });
+    caixa.addEventListener("mouseleave", function(){ tip.style.opacity = "0"; });
   }
 
   function resumoPadroes(d){
@@ -1681,7 +1715,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     });
   }
 
-  function crescimento(d){ colunasPorDia("c-cresce", d.crescimento, "novas", "var(--s1)", "televisões"); }
+  function crescimento(d){ colunasPorDia("c-cresce", d.crescimento, "novas", "var(--s1)", "aparelhos"); }
   function quedasNoTempo(d){ colunasPorDia("c-quedas", d.quedas, "n", "var(--s2)", "quedas"); }
 
   /* --- três séries no tempo, com legenda e rótulo na ponta --- */
@@ -1778,7 +1812,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     }).join("");
   }
 
-  /** O número da API não diz nada a quem dirige a igreja; a versão diz. */
+  /** O número da API não diz nada a quem opera o painel; a versão diz. */
   function apiParaAndroid(sdk){
     var m = { 21:"5.0", 22:"5.1", 23:"6", 24:"7", 25:"7.1", 26:"8", 27:"8.1", 28:"9",
               29:"10", 30:"11", 31:"12", 32:"12L", 33:"13", 34:"14", 35:"15", 36:"16", 37:"17" };
