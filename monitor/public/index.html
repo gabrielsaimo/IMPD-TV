@@ -299,9 +299,27 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
 /* ---------- formulários ---------- */
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px;margin-top:18px}
 .field label{display:block;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
+/* background-color, e nao o atalho background: o atalho zera o
+   background-image, que e onde a seta do select e desenhada — e como
+   ".field select" tem especificidade maior que "select", a seta sumia so no
+   campo de dentro do formulario. */
 .field input,.field select,select{width:100%;font:inherit;font-size:13px;padding:10px 12px;
-  border:1px solid var(--line);border-radius:9px;background:var(--raised);color:var(--ink);transition:border-color .15s}
+  border:1px solid var(--line);border-radius:9px;background-color:var(--raised);color:var(--ink);transition:border-color .15s}
 .field input:focus,.field select:focus,select:focus{border-color:var(--signal);outline:none}
+/* Dentro da tabela o campo não pode ocupar a linha inteira, mas tem de ser o
+   mesmo campo: mesma altura, mesma borda, mesmo fundo. Antes ele trazia
+   estilo em linha apontando para uma variável que o redesenho apagou, e saía
+   sem fundo e menor que tudo à volta. */
+/* A seta é desenhada, não a do sistema: a nativa muda de forma entre
+   navegadores e destoa do resto, que é todo desenhado aqui. Vale para todo
+   select da tela, dentro ou fora de tabela. */
+select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:34px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
+                   linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
+  background-position:calc(100% - 17px) center,calc(100% - 12px) center;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+select:hover{border-color:var(--ink-3)}
+.sel{width:auto;min-width:200px;max-width:100%;padding:9px 34px 9px 12px;font-size:12.5px}
 .field input::placeholder{color:var(--ink-3)}
 .btn{font:inherit;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:9px 15px;border-radius:9px;
   border:1px solid var(--line);background:var(--raised);color:var(--ink-2);cursor:pointer;white-space:nowrap;transition:.15s}
@@ -1459,8 +1477,7 @@ td:last-child,th:last-child{white-space:nowrap;width:1%}
     UF_LISTA.forEach(function(uf){
       o += '<option value="' + uf + '"' + (atual === uf ? " selected" : "") + '>' + uf + ' · ' + UF_NOME[uf] + '</option>';
     });
-    return '<select style="font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--line);' +
-           'border-radius:7px;background:var(--surface-2);color:var(--ink)" data-scope="' + canalId +
+    return '<select class="sel" data-scope="' + canalId +
            '" data-name="' + nome + '" data-en="' + (ligado ? 1 : 0) + '">' + o + '</select>';
   }
 
