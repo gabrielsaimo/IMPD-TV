@@ -628,6 +628,24 @@ async function cities(request, env, url) {
   const grace = (await configNumber(env, "heartbeat_seconds", 300)) * OFFLINE_GRACE;
   const online = now - grace;
   const pedido = String(url.searchParams.get("uf") || "").toUpperCase();
+  const pais = String(url.searchParams.get("pais") || "").toUpperCase();
+
+  // Um país de fora, por extenso. Fora do Brasil não há UF: o que agrupa é a
+  // cidade direto, e a gaveta de doação desses aparelhos cai na chave nacional.
+  if (pais) {
+    if (!/^[A-Z]{2}$/.test(pais)) return json({ error: "pais" }, 400, env);
+    const rows = await env.DB.prepare(`
+      SELECT COALESCE(city, '(cidade não identificada)') AS city,
+             COUNT(*) AS devices,
+             SUM(CASE WHEN last_playing > ?2 THEN 1 ELSE 0 END) AS watching,
+             CAST(ROUND(AVG(screen_seconds)) AS INTEGER) AS avg_screen
+        FROM devices
+       WHERE country = ?1 AND country <> 'BR'
+       GROUP BY COALESCE(city, '(cidade não identificada)')
+       ORDER BY devices DESC, city
+    `).bind(pais, online).all();
+    return json({ pais: pais, cities: rows.results || [] }, 200, env);
+  }
 
   // Sem UF: os primeiros municípios de cada estado, que é o que cabe num
   // rótulo de gráfico. O painel pede isso uma vez e o balãozinho responde na
@@ -651,7 +669,26 @@ async function cities(request, env, url) {
     // Cinco por estado: o balãozinho não comporta mais que isso, e o resto
     // continua inteiro no modal de quem quiser ver tudo.
     for (const uf in porUf) porUf[uf] = porUf[uf].slice(0, 5);
-    return json({ byUf: porUf }, 200, env);
+
+    // O mesmo para fora do Brasil, que também merece o balãozinho.
+    const fora = await env.DB.prepare(`
+      SELECT COALESCE(country, '??') AS country,
+             COALESCE(city, '(não identificada)') AS city,
+             COUNT(*) AS devices,
+             SUM(CASE WHEN last_playing > ?1 THEN 1 ELSE 0 END) AS watching
+        FROM devices
+       WHERE country IS NULL OR country <> 'BR'
+       GROUP BY COALESCE(country, '??'), COALESCE(city, '(não identificada)')
+       ORDER BY country, devices DESC
+    `).bind(online).all();
+
+    const porPais = {};
+    for (const r of (fora.results || [])) {
+      (porPais[r.country] = porPais[r.country] || []).push({ city: r.city, devices: r.devices, watching: r.watching });
+    }
+    for (const c in porPais) porPais[c] = porPais[c].slice(0, 5);
+
+    return json({ byUf: porUf, byCountry: porPais }, 200, env);
   }
 
   if (!/^[A-Z]{2}$/.test(pedido)) return json({ error: "uf" }, 400, env);
